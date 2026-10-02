@@ -37,6 +37,7 @@ A referee re-runs every attack plus legitimate analyst queries, and a Streamlit 
 - Snowflake (trial account, Enterprise edition), Python `snowflake-connector-python`
 - Attacker model: Gemma via Ollama, model name from env `OLLAMA_MODEL`
 - Defender: Snowflake CoCo (Cortex Code) + `skills/pii-guardian` (Agent Skill Open Standard)
+- Second skill: `skills/bouncer` checks packages before install. **Your AI tool must follow it too:** run `python skills/bouncer/scripts/check.py <pkg>` before adding any new dependency.
 - UI: Streamlit, run locally
 - Config: `.env` loaded by `leakhunter/config.py`
 

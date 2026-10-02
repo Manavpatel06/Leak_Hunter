@@ -10,6 +10,7 @@
 3. A judge can open a hole live and watch it get caught and closed.
 4. Attacks the AI layer too (stretch): plain-English questions to a data chatbot.
 5. Open skill + open attack library; attacker model runs locally.
+6. **Bouncer**, a second skill: blocks packages an AI agent invents or that look like typos, before they get installed and steal the warehouse key.
 
 **vs. existing tools:** classification tools find where sensitive data is; LeakHunter proves whether it's reachable, fixes it, and proves the fix works without breaking legitimate work.
 

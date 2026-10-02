@@ -111,6 +111,7 @@ Rules: aggregates only, run as `LH_ANALYST`, and must keep passing **after** the
 | `LEGIT_RUNS` | `RUN_ID, ROUND_NO, QUERY_ID, DESCRIPTION, PASSED, ERROR, RAN_AT` |
 | `FIXES` | `FIX_ID, ROUND_NO, ATTACK_ID, FIX_TYPE, SQL_APPLIED, RATIONALE, APPLIED_BY, APPLIED_AT` |
 | `PLANTED` | `LEAK_ID, DESCRIPTION, PLANTED_AT` |
+| `BOUNCER_LOG` | `CHECK_ID, PACKAGE, ECOSYSTEM, VERDICT, REASONS, REQUESTED_BY, CHECKED_AT` · `VERDICT` ∈ `ALLOW | WARN | BLOCK` · `REQUESTED_BY` ∈ `coco | gemma | claude | human` |
 
 Views: `RESULTS.LEAK_LOG` (successful attacks in the latest round; what the defender reads) and `RESULTS.SCOREBOARD` (per round: `LEAKS`, `ATTACKS`, `LEGIT_PASSED`, `LEGIT_TOTAL`).
 
@@ -147,7 +148,12 @@ openssl rsa -in secrets/lh_bot_key.p8 -pubout -out secrets/lh_bot_key.pub
 Then in Snowsight as ACCOUNTADMIN: `ALTER USER LH_BOT SET RSA_PUBLIC_KEY='<contents of .pub without the BEGIN/END lines>';`
 Send `lh_bot_key.p8` + `.env` values to teammates **privately (DM)**. `secrets/` is gitignored.
 
-## 11. Links
+## 11. Bouncer (owner: Reya)
+- Skill: `skills/bouncer/SKILL.md`; check: `python skills/bouncer/scripts/check.py <pkg> ... [--log] [--by <agent>]`.
+- Output: one JSON line per package `{"package", "verdict", "reasons"}`; exit code 0 ALLOW, 1 WARN, 2 BLOCK.
+- Logging via `db.log_bouncer`. Details and tasks: `docs/BOUNCER.md`.
+
+## 12. Links
 - MLH submission: https://www.mlh.com/events/hacktoberfest-hack-day-tempe-x-sunhacks/submissions/new
 - Event Discord: https://discord.gg/SFmUNjPjb
 - Agent Skill standard: https://agentskills.io (validate with `skills-ref validate ./skills/pii-guardian`)

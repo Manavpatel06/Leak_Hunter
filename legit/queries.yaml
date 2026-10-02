@@ -17,5 +17,5 @@
     SELECT LEFT(ZIP, 3) AS ZIP3, FLOOR(YEAR(DOB) / 10) * 10 AS DECADE, COUNT(*) AS PATIENTS
     FROM LEAKHUNTER.DATA.PATIENTS GROUP BY 1, 2
   expect: nonempty
-# Q04..Q10: Reya to add (e.g. top diagnoses, cost per department, visits per patient histogram,
+# Q04..Q10: Manas to add (e.g. top diagnoses, cost per department, visits per patient histogram,
 # headcount by title, hires per year, average rating needs HR so DO NOT include reviews).

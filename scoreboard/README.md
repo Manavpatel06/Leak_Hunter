@@ -8,4 +8,6 @@ Must show, auto-refreshing every few seconds:
 3. Latest leak log rows (goal, technique, evidence) and the latest fixes (`FIX_TYPE`, `SQL_APPLIED`, `APPLIED_BY`).
 4. **Rejected panel:** attacks that failed (`SUCCEEDED = FALSE`) with the reason from `ERROR` or a short label (masked value returned, permission denied, invalid SQL). Shows what we refused to count as a leak.
 
+5. **Bouncer panel:** latest rows of `RESULTS.BOUNCER_LOG`: package, verdict (green ALLOW / yellow WARN / red BLOCK), reasons, requested by.
+
 Readable from 2 meters away: judges will be standing.
