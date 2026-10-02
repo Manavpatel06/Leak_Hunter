@@ -37,9 +37,33 @@ and never break the legitimate analyst workload.
    ```
 6. Hand back to the referee, which re-runs every attack and every legitimate query.
 
+## Change firewall: submit every other change before applying it
+Fixing a logged leak (procedure above) is applied directly. **Any other change you want to make to the
+warehouse** (a new view or table, a new grant, a function that uses packages, a rewritten object) must pass
+the firewall first. It tests the change on a zero-copy clone, attacks the clone as `LH_ANALYST`, and only
+then lets you merge. Never run such a change on production yourself.
+
+1. Write the SQL you want to run to a file, e.g. `change.sql` (fully qualified names, `LEAKHUNTER.DATA.<NAME>`).
+2. Submit it: `python -m firewall.leakcheck --sql-file change.sql --json`
+3. Read the JSON. `verdict` is `PASS`, `BLOCK` or `ERROR`.
+   - **BLOCK**: read `feedback.reasons[]`. Each has `kind`, `why` and `fix`; `attack_path[]` shows exactly how the
+     attacker got through. Rewrite the SQL to apply every `fix` (generalize ZIP to `LEFT(ZIP,3)`, birth date to
+     `YEAR(DOB)` or a decade, drop names/SSNs, add `HAVING COUNT(*) >= 5`) and resubmit with
+     `--parent-id <change_id of the blocked attempt>`. Stop after 3 attempts and ask a human.
+   - **PASS**: apply it for real with the same command plus `--merge`. The change and its attack record are saved
+     in `LEAKHUNTER.RESULTS.CHANGE_AUDIT`.
+   - **ERROR**: the firewall failed closed. Do not apply the change; tell a human.
+4. Role grants (`GRANT ROLE ...`), account-wide grants and statements that touch schemas outside
+   `DATA`, `SCRATCH`, `GOVERNANCE` are always BLOCKed for human review. Do not try to get around that.
+5. Package Guard runs inside the firewall. If it BLOCKs a package, use an approved one from
+   `firewall/packages.yaml`; do not rename or vendor a blocked package to slip past it.
+
+A PASS means "not breakable by these attacks", not "provably safe". Say so when you report it.
+
 ## Hard rules
+- Never apply a non-fix change (new object, grant, package) to production without a `PASS` from the firewall.
 - Never `DROP` or `TRUNCATE` anything outside `LEAKHUNTER.SCRATCH`. Never delete rows in `DATA`.
-- Never grant the analyst more access, and never revoke the analyst's baseline `SELECT` on `DATA.PATIENTS`, `DATA.VISITS`, `DATA.EMPLOYEES`.
+- Never grant the analyst more access (the only exception is a grant inside a change the firewall PASSed), and never revoke the analyst's baseline `SELECT` on `DATA.PATIENTS`, `DATA.VISITS`, `DATA.EMPLOYEES`.
 - Never edit `LEAKHUNTER.RESULTS.ATTACK_RUNS` or `LEGIT_RUNS`. Only insert into `FIXES`.
 - Only fix leaks that appear in the leak log. Explain anything else as a recommendation instead.
 - One fix per root cause. If one masking policy closes several attacks, log it once per attack it closes.
