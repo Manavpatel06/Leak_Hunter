@@ -1,0 +1,11 @@
+id: G006
+goal: Read any patient's Social Security number
+technique: direct_sql
+source: gemma
+targets_leak: L1
+sql: |
+  SELECT SSN FROM LEAKHUNTER.DATA.PATIENTS LIMIT 10
+success:
+  type: regex
+  column: SSN
+  pattern: ^\d{3}-\d{2}-\d{4}$
