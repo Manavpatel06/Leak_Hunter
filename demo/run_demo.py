@@ -8,6 +8,11 @@
   python demo/run_demo.py scoreboard    open the Streamlit scoreboard
   python demo/run_demo.py showcase      rebuild the interactive dashboard from live data and open it
   python demo/run_demo.py all           doctor, round, agent (no merge)
+  python demo/run_demo.py loop          full proof, end to end: reset, plant all leaks, round (leaks), defender
+                                        fixes, round (re-check: 0 leaks, legit all pass), audit report, dashboard
+  python demo/run_demo.py judge         judge break: someone exports PATIENTS to SCRATCH -> round (caught),
+                                        defender, round (closed), report + dashboard refreshed
+  python demo/run_demo.py dashboard     rebuild report/dashboard.html + report/audit_report.md from RESULTS
 
 Everything it prints is real output from the real tools; nothing is canned except `--sample` (no Ollama).
 """
@@ -146,9 +151,51 @@ def agent(args) -> int:
     return 0
 
 
+def loop() -> int:
+    """The whole story in one go. Stops at the first failing step."""
+    steps = [(["-m", "setup.reset"], "reset (rehearsal state)"),
+             (["-m", "setup.plant_leaks", "--all"], "plant leaks L1-L6"),
+             (["-m", "referee.run_round"], "ROUND 1: attack (expect leaks, legit all pass)"),
+             (["-m", "defender.apply_fixes"], "DEFEND: pii-guardian playbook fixes, logged to RESULTS.FIXES"),
+             (["-m", "referee.run_round"], "ROUND 2: re-check (expect 0 leaks, legit all pass)"),
+             (["-m", "report.generate"], "audit report -> report/audit_report.md"),
+             (["-m", "report.dashboard"], "dashboard -> report/dashboard.html"),
+             (["demo/build_showcase.py"], "interactive showcase -> docs/showcase.html")]
+    for cmd, title in steps:
+        if run(cmd, title):
+            print(f"\n  STOPPED at: {title}")
+            return 1
+    print("\n  Done. Open docs/showcase.html (interactive) or report/dashboard.html (one page), or: python demo/run_demo.py scoreboard")
+    return 0
+
+
+def judge() -> int:
+    """demo/judge_breaks.sql option 1, run as LH_ADMIN, then caught -> fixed -> proven."""
+    from leakhunter import db
+    banner("judge break: 'quick export for an analysis' (demo/judge_breaks.sql option 1)")
+    c = db.connect(db.ADMIN)
+    try:
+        for sql in ("CREATE OR REPLACE TABLE LEAKHUNTER.SCRATCH.JUDGE_EXPORT AS SELECT * FROM LEAKHUNTER.DATA.PATIENTS",
+                    "GRANT USAGE ON SCHEMA LEAKHUNTER.SCRATCH TO ROLE LH_ANALYST",
+                    "GRANT SELECT ON TABLE LEAKHUNTER.SCRATCH.JUDGE_EXPORT TO ROLE LH_ANALYST"):
+            print("  SQL> " + sql)
+            db.query(c, sql)
+    finally:
+        c.close()
+    for cmd, title in ((["-m", "referee.run_round"], "ROUND: the SSN sweep (A07) catches the export"),
+                       (["-m", "defender.apply_fixes"], "DEFEND"),
+                       (["-m", "referee.run_round"], "ROUND: re-check"),
+                       (["-m", "report.generate"], "audit report"),
+                       (["-m", "report.dashboard"], "dashboard"),
+                       (["demo/build_showcase.py"], "interactive showcase")):
+        if run(cmd, title):
+            return 1
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["doctor", "agent", "round", "scoreboard", "showcase", "all"])
+    ap.add_argument("command", choices=["doctor", "agent", "round", "scoreboard", "showcase", "all", "loop", "judge", "dashboard"])
     ap.add_argument("--merge", action="store_true", help="agent: apply the PASSed change to production")
     ap.add_argument("--cleanup", action="store_true", help="agent: with --merge, drop the demo view afterwards")
     ap.add_argument("--sample", action="store_true", help="agent: canned package list instead of live Gemma")
@@ -169,6 +216,12 @@ def main() -> int:
         return code
     if args.command == "agent":
         return agent(args)
+    if args.command == "loop":
+        return loop()
+    if args.command == "judge":
+        return judge()
+    if args.command == "dashboard":
+        return run(["-m", "report.generate"], "audit report") or run(["-m", "report.dashboard"], "dashboard")
     if doctor():  # all
         return 1
     run(["-m", "referee.run_round"], "referee round")

@@ -1,0 +1,686 @@
+{
+ "generated_at": "2026-10-02 15:03",
+ "scoreboard": [
+  {
+   "ROUND_NO": 1,
+   "LEAKS": 11,
+   "ATTACKS": 12,
+   "LEGIT_PASSED": 10,
+   "LEGIT_TOTAL": 10
+  },
+  {
+   "ROUND_NO": 2,
+   "LEAKS": 0,
+   "ATTACKS": 12,
+   "LEGIT_PASSED": 10,
+   "LEGIT_TOTAL": 10
+  }
+ ],
+ "attacks": [
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A01",
+   "GOAL": "Read any patient SSN",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L1",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A02",
+   "GOAL": "See employee salaries by name",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L2",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A03",
+   "GOAL": "Re-identify 'anonymized' patients using free public population data",
+   "TECHNIQUE": "reidentification",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L3",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 1,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A04",
+   "GOAL": "Read private HR performance reviews",
+   "TECHNIQUE": "role_escalation",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L4",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A05",
+   "GOAL": "Find SSNs in a forgotten export table",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L5",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A06",
+   "GOAL": "Link patient names to diagnoses through a reporting view",
+   "TECHNIQUE": "join",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L6",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A07",
+   "GOAL": "Sweep every readable table for SSN-like columns (catches tables nobody told us about)",
+   "TECHNIQUE": "sweep",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 15,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G001",
+   "GOAL": "Read any patient's Social Security number",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L1",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G002",
+   "GOAL": "See any employee's salary next to their name",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L2",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G003",
+   "GOAL": "Link a patient's name to a diagnosis",
+   "TECHNIQUE": "join",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L6",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G004",
+   "GOAL": "Read private HR performance reviews",
+   "TECHNIQUE": "role_escalation",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L4",
+   "SUCCEEDED": 1,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G005",
+   "GOAL": "Find any table containing SSNs that you were not told about",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L5",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "A01",
+   "GOAL": "Read any patient SSN",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L1",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "A02",
+   "GOAL": "See employee salaries by name",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L2",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "A03",
+   "GOAL": "Re-identify 'anonymized' patients using free public population data",
+   "TECHNIQUE": "reidentification",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L3",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 1,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "A04",
+   "GOAL": "Read private HR performance reviews",
+   "TECHNIQUE": "role_escalation",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L4",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 0,
+   "ERROR": "002003 (42S02): SQL compilation error:\nObject 'LEAKHUNTER.DATA.EMPLOYEE_REVIEWS' does not exist or not authorized. Your primary role LH_ANALYST must have at lea"
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "A05",
+   "GOAL": "Find SSNs in a forgotten export table",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L5",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 0,
+   "ERROR": "002003 (02000): SQL compilation error:\nSchema 'LEAKHUNTER.SCRATCH' does not exist or not authorized. Your primary role LH_ANALYST must have USAGE or any other p"
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "A06",
+   "GOAL": "Link patient names to diagnoses through a reporting view",
+   "TECHNIQUE": "join",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "L6",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 5,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "A07",
+   "GOAL": "Sweep every readable table for SSN-like columns (catches tables nobody told us about)",
+   "TECHNIQUE": "sweep",
+   "SOURCE": "library",
+   "TARGETS_LEAK": "",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "G001",
+   "GOAL": "Read any patient's Social Security number",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L1",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "G002",
+   "GOAL": "See any employee's salary next to their name",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L2",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "G003",
+   "GOAL": "Link a patient's name to a diagnosis",
+   "TECHNIQUE": "join",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L6",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "G004",
+   "GOAL": "Read private HR performance reviews",
+   "TECHNIQUE": "role_escalation",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L4",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 0,
+   "ERROR": "002003 (42S02): SQL compilation error:\nObject 'LEAKHUNTER.DATA.EMPLOYEE_REVIEWS' does not exist or not authorized. Your primary role LH_ANALYST must have at lea"
+  },
+  {
+   "ROUND_NO": 2,
+   "ATTACK_ID": "G005",
+   "GOAL": "Find any table containing SSNs that you were not told about",
+   "TECHNIQUE": "direct_sql",
+   "SOURCE": "gemma",
+   "TARGETS_LEAK": "L5",
+   "SUCCEEDED": 0,
+   "ROWS_RETURNED": 10,
+   "ERROR": ""
+  }
+ ],
+ "legit": [
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q01",
+   "DESCRIPTION": "Visits per department per month",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q02",
+   "DESCRIPTION": "Average salary by department",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q03",
+   "DESCRIPTION": "Patients by 3-digit ZIP area and birth decade",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q04",
+   "DESCRIPTION": "Top 10 diagnoses by visit count",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q05",
+   "DESCRIPTION": "Total and average visit cost per department",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q06",
+   "DESCRIPTION": "Histogram of visits per patient",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q07",
+   "DESCRIPTION": "Headcount and average salary by department and title",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q08",
+   "DESCRIPTION": "Hires per year by department",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q09",
+   "DESCRIPTION": "Patients by sex and age band",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 1,
+   "QUERY_ID": "Q10",
+   "DESCRIPTION": "Visits and cost by 3-digit ZIP area and department",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q01",
+   "DESCRIPTION": "Visits per department per month",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q02",
+   "DESCRIPTION": "Average salary by department",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q03",
+   "DESCRIPTION": "Patients by 3-digit ZIP area and birth decade",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q04",
+   "DESCRIPTION": "Top 10 diagnoses by visit count",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q05",
+   "DESCRIPTION": "Total and average visit cost per department",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q06",
+   "DESCRIPTION": "Histogram of visits per patient",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q07",
+   "DESCRIPTION": "Headcount and average salary by department and title",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q08",
+   "DESCRIPTION": "Hires per year by department",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q09",
+   "DESCRIPTION": "Patients by sex and age band",
+   "PASSED": 1
+  },
+  {
+   "ROUND_NO": 2,
+   "QUERY_ID": "Q10",
+   "DESCRIPTION": "Visits and cost by 3-digit ZIP area and department",
+   "PASSED": 1
+  }
+ ],
+ "fixes": [
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A07",
+   "FIX_TYPE": "drop_scratch",
+   "SQL_APPLIED": "REVOKE USAGE ON SCHEMA LEAKHUNTER.SCRATCH FROM ROLE LH_ANALYST;\nDROP TABLE IF EXISTS LEAKHUNTER.SCRATCH.PATIENTS_EXPORT_OLD;\nALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN SSN SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_SSN;",
+   "RATIONALE": "LEAKHUNTER.SCRATCH.PATIENTS_EXPORT_OLD.SSN readable in SCRATCH -> revoke + drop; LEAKHUNTER.DATA.PATIENTS.SSN unmasked -> MASK_SSN",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A01",
+   "FIX_TYPE": "masking",
+   "SQL_APPLIED": "ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN SSN SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_SSN;",
+   "RATIONALE": "Mask PATIENTS.SSN at the base column; analyst sees only the last 4 digits.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A02",
+   "FIX_TYPE": "masking",
+   "SQL_APPLIED": "ALTER TABLE LEAKHUNTER.DATA.EMPLOYEES MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;",
+   "RATIONALE": "Mask EMPLOYEES.FULL_NAME, keep SALARY visible so salary averages still work.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A03",
+   "FIX_TYPE": "masking",
+   "SQL_APPLIED": "ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN ZIP SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_ZIP;\nALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN DOB SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_DOB;",
+   "RATIONALE": "Generalize quasi-identifiers: ZIP to 3 digits, DOB to birth year; masks follow the columns into PATIENT_DEMOGRAPHICS, so the public-data join no longer singles anyone out.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A04",
+   "FIX_TYPE": "revoke",
+   "SQL_APPLIED": "REVOKE ROLE LH_HR FROM ROLE LH_ANALYST;",
+   "RATIONALE": "Analyst inherited LH_HR; revoke the role grant (least privilege).",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A05",
+   "FIX_TYPE": "drop_scratch",
+   "SQL_APPLIED": "REVOKE USAGE ON SCHEMA LEAKHUNTER.SCRATCH FROM ROLE LH_ANALYST;\nDROP TABLE IF EXISTS LEAKHUNTER.SCRATCH.PATIENTS_EXPORT_OLD;",
+   "RATIONALE": "Raw admin-made copy in SCRATCH; masking the source never protects a copy. Revoke analyst access to SCRATCH and drop the copy.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "A06",
+   "FIX_TYPE": "masking",
+   "SQL_APPLIED": "ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;",
+   "RATIONALE": "Mask PATIENTS.FULL_NAME; the mask follows the column into VISIT_DETAILS, so diagnoses stay usable but are no longer tied to names.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G001",
+   "FIX_TYPE": "masking",
+   "SQL_APPLIED": "ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN SSN SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_SSN;",
+   "RATIONALE": "Mask PATIENTS.SSN at the base column; analyst sees only the last 4 digits.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G002",
+   "FIX_TYPE": "masking",
+   "SQL_APPLIED": "ALTER TABLE LEAKHUNTER.DATA.EMPLOYEES MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;",
+   "RATIONALE": "Mask EMPLOYEES.FULL_NAME, keep SALARY visible so salary averages still work.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G003",
+   "FIX_TYPE": "masking",
+   "SQL_APPLIED": "ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;",
+   "RATIONALE": "Mask PATIENTS.FULL_NAME; the mask follows the column into VISIT_DETAILS, so diagnoses stay usable but are no longer tied to names.",
+   "APPLIED_BY": "script"
+  },
+  {
+   "ROUND_NO": 1,
+   "ATTACK_ID": "G004",
+   "FIX_TYPE": "revoke",
+   "SQL_APPLIED": "REVOKE ROLE LH_HR FROM ROLE LH_ANALYST;",
+   "RATIONALE": "Analyst inherited LH_HR; revoke the role grant (least privilege).",
+   "APPLIED_BY": "script"
+  }
+ ],
+ "planted": [
+  {
+   "LEAK_ID": "L1"
+  },
+  {
+   "LEAK_ID": "L2"
+  },
+  {
+   "LEAK_ID": "L3"
+  },
+  {
+   "LEAK_ID": "L4"
+  },
+  {
+   "LEAK_ID": "L5"
+  },
+  {
+   "LEAK_ID": "L6"
+  }
+ ],
+ "bouncer": [
+  {
+   "PACKAGE": "reqeusts",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name; name is one or two letters away from popular package 'requests' (possible typosquat)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "snowflake-pdf-exporter",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "pandas",
+   "VERDICT": "ALLOW",
+   "REASONS": "established package (119 releases)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "reportlab",
+   "VERDICT": "ALLOW",
+   "REASONS": "no linked source repository (cannot review maintainers)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "snowflake-connector-python",
+   "VERDICT": "ALLOW",
+   "REASONS": "established package (188 releases)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "reqeusts",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name; name is one or two letters away from popular package 'requests' (possible typosquat)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "snowflake-pdf-exporter",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "pandas",
+   "VERDICT": "ALLOW",
+   "REASONS": "established package (119 releases)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "reportlab",
+   "VERDICT": "ALLOW",
+   "REASONS": "no linked source repository (cannot review maintainers)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "snowflake-connector-python",
+   "VERDICT": "ALLOW",
+   "REASONS": "established package (188 releases)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "pandsa",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name; name is one or two letters away from popular package 'pandas' (possible typosquat)",
+   "REQUESTED_BY": "coco"
+  },
+  {
+   "PACKAGE": "pandsa",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name; name is one or two letters away from popular package 'pandas' (possible typosquat)",
+   "REQUESTED_BY": "coco"
+  },
+  {
+   "PACKAGE": "reqeusts",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name; name is one or two letters away from popular package 'requests' (possible typosquat)",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "snowflake-pdf-exporter",
+   "VERDICT": "BLOCK",
+   "REASONS": "does not exist on PyPI: likely invented by the AI; an attacker could register this name",
+   "REQUESTED_BY": "human"
+  },
+  {
+   "PACKAGE": "pandas",
+   "VERDICT": "ALLOW",
+   "REASONS": "established package (119 releases)",
+   "REQUESTED_BY": "human"
+  }
+ ],
+ "firewall": [
+  {
+   "CHANGE_ID": "9d0a5836138f",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "BLOCK",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [{\"kind\": \"account_level\", \"blocking\": true, \"object\": \"GRANT ROLE LH_HR TO ROLE LH_ANALYST\", \"detail\": \"role/account grants are account-wide and cannot be tested on a clone; a human must review them\", \"evidence\": \"\", \"fix\": \"S"
+  },
+  {
+   "CHANGE_ID": "61968b065c85",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "PASS",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [], \"attack_path\": [{\"step\": \"library_attack\", \"attack_id\": \"A01\", \"goal\": \"Read any patient SSN\", \"sql\": \"SELECT FULL_NAME, SSN FROM LEAKHUNTER.FW_2C6C43DC_DATA.PATIENTS LIMIT 5\", \"succeeded\": true, \"evidence\": \"FULL_NAME, SSN"
+  },
+  {
+   "CHANGE_ID": "4ddb20debb40",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "BLOCK",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [{\"kind\": \"small_group\", \"blocking\": true, \"object\": \"LEAKHUNTER.DATA.PATIENT_ANALYTICS\", \"detail\": \"4188 of 5000 rows are in groups smaller than 5 on ['ZIP', 'DOB', 'SEX'] (smallest: 1), so people are re-identifiable\", \"eviden"
+  },
+  {
+   "CHANGE_ID": "a59e48f57351",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "PASS",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [], \"attack_path\": [{\"step\": \"library_attack\", \"attack_id\": \"A01\", \"goal\": \"Read any patient SSN\", \"sql\": \"SELECT FULL_NAME, SSN FROM LEAKHUNTER.FW_8EFDDE0D_DATA.PATIENTS LIMIT 5\", \"succeeded\": true, \"evidence\": \"FULL_NAME, SSN"
+  },
+  {
+   "CHANGE_ID": "877c7a2cc552",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "BLOCK",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [{\"kind\": \"small_group\", \"blocking\": true, \"object\": \"LEAKHUNTER.DATA.PATIENT_ANALYTICS\", \"detail\": \"4188 of 5000 rows are in groups smaller than 5 on ['ZIP', 'DOB', 'SEX'] (smallest: 1), so people are re-identifiable\", \"eviden"
+  },
+  {
+   "CHANGE_ID": "7debe19a8a98",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "BLOCK",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [{\"kind\": \"package_invented\", \"blocking\": true, \"object\": \"pandsa\", \"detail\": \"Bouncer: does not exist on PyPI: likely invented by the AI; an attacker could register this name\", \"evidence\": \"\", \"fix\": \"Remove it or use an appro"
+  },
+  {
+   "CHANGE_ID": "18697f7026f9",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "PASS",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [], \"attack_path\": [{\"step\": \"library_attack\", \"attack_id\": \"A01\", \"goal\": \"Read any patient SSN\", \"sql\": \"SELECT FULL_NAME, SSN FROM LEAKHUNTER.FW_BD263242_DATA.PATIENTS LIMIT 5\", \"succeeded\": true, \"evidence\": \"FULL_NAME, SSN"
+  },
+  {
+   "CHANGE_ID": "7c5afb03fcd0",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "BLOCK",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [{\"kind\": \"package_invented\", \"blocking\": true, \"object\": \"pandsa\", \"detail\": \"Bouncer: does not exist on PyPI: likely invented by the AI; an attacker could register this name\", \"evidence\": \"\", \"fix\": \"Remove it or use an appro"
+  },
+  {
+   "CHANGE_ID": "4b8878b4e93d",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "PASS",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [], \"attack_path\": [{\"step\": \"library_attack\", \"attack_id\": \"A01\", \"goal\": \"Read any patient SSN\", \"sql\": \"SELECT FULL_NAME, SSN FROM LEAKHUNTER.FW_EB0D8A26_DATA.PATIENTS LIMIT 5\", \"succeeded\": true, \"evidence\": \"FULL_NAME, SSN"
+  },
+  {
+   "CHANGE_ID": "6953c9475c6d",
+   "SUBMITTED_BY": "coco",
+   "VERDICT": "PASS",
+   "MERGED": 0,
+   "FINDINGS": "{\"findings\": [], \"attack_path\": [{\"step\": \"library_attack\", \"attack_id\": \"A01\", \"goal\": \"Read any patient SSN\", \"sql\": \"SELECT FULL_NAME, SSN FROM LEAKHUNTER.FW_EA8E3DF3_DATA.PATIENTS LIMIT 5\", \"succeeded\": true, \"evidence\": \"FULL_NAME, SSN"
+  }
+ ],
+ "reidentified": [
+  {
+   "N": 137
+  }
+ ]
+}

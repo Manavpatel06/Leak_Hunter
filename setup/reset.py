@@ -37,6 +37,7 @@ def main() -> None:
         print("Drop planted views + everything in SCRATCH (incl. judge exports) ...")
         c.run(conn, f"DROP VIEW IF EXISTS {c.DEMOGRAPHICS_VIEW}", dry)
         c.run(conn, f"DROP VIEW IF EXISTS {c.VISIT_DETAILS_VIEW}", dry)
+        c.run(conn, "DROP VIEW IF EXISTS LEAKHUNTER.DATA.PATIENT_ANALYTICS", dry)   # firewall demo view
         for kind, name in c.scratch_objects(conn):
             c.drop_scratch_object(conn, name, kind, dry)
         print("Baseline grants + EMPLOYEES.SSN mask ...")
