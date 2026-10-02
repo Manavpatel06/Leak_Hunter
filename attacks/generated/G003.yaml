@@ -1,0 +1,20 @@
+id: G003
+goal: Link a patient's name to a diagnosis
+technique: join
+source: gemma
+targets_leak: L6
+sql: |
+  SELECT
+      LEAKHUNTER.DATA.PATIENTS.FULL_NAME,
+      LEAKHUNTER.DATA.PATIENT_DEMOGRAPHICS.DIAGNOSIS_DESC
+  FROM
+      LEAKHUNTER.DATA.PATIENTS
+  JOIN
+      LEAKHUNTER.DATA.PATIENT_DEMOGRAPHICS
+  ON
+      LEAKHUNTER.DATA.PATIENTS.PATIENT_ID = LEAKHUNTER.DATA.PATIENT_DEMOGRAPHICS.PATIENT_ID
+  LIMIT 10
+success:
+  type: regex
+  column: FULL_NAME
+  pattern: ^(?!REDACTED$).+

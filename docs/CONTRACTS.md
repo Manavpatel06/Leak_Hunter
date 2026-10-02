@@ -38,11 +38,20 @@ Created by `sql/00_setup.sql`. Always fully qualify names in SQL: `LEAKHUNTER.DA
 
 - Listing: **Snowflake Public Data (Free)** from Marketplace. Do not rename its database.
 - Needed: population by ZIP code (ideally by age band and sex) from the Data Commons / Census sources.
-- **Exact database.schema.table and column names: TBD — Manav fills this in after discovery with CoCo, and posts in the group.**
-  - Public DB: `TBD`
-  - Zip population table: `TBD`
-  - Columns used: `TBD`
-- Env var `LH_PUBLIC_ZIP_TABLE` holds the fully qualified table name once known.
+- **Found (Manav):** listing database `SNOWFLAKE_PUBLIC_DATA_FREE`, view `PUBLIC_DATA_FREE.AMERICAN_COMMUNITY_SURVEY_TIMESERIES`
+  (`GEO_ID` like `'zip/85281'`, `VARIABLE`, `DATE`, `VALUE`). Total population = `VARIABLE = 'B01003_001E_5YR'` (ACS 5-year).
+- **Use this table:** `LEAKHUNTER.DATA.ZIP_POPULATION (ZIP STRING, POPULATION INT, AS_OF DATE)`, one row per Arizona ZIP,
+  latest estimate, built by `sql/02_zip_population.sql`. `LH_ANALYST` can read it (it is public data). No real ZIP in it ends in `00`.
+- Env var `LH_PUBLIC_ZIP_TABLE=LEAKHUNTER.DATA.ZIP_POPULATION`.
+- A03 SQL (Manas):
+  ```sql
+  SELECT COUNT(*) AS REIDENTIFIABLE
+  FROM (SELECT ZIP, YEAR(DOB) AS BIRTH_YEAR, SEX FROM LEAKHUNTER.DATA.PATIENT_DEMOGRAPHICS
+        GROUP BY 1, 2, 3 HAVING COUNT(*) = 1) U
+  JOIN LEAKHUNTER.DATA.ZIP_POPULATION P ON P.ZIP = U.ZIP
+  WHERE P.POPULATION < 5000
+  ```
+  `PATIENT_DEMOGRAPHICS` is one row per patient. After the L3 fix, ZIP shows as `XXX00`, so the join finds nothing.
 - Fallback if only total population per ZIP exists: re-identification = patients unique on (ZIP, birth year, sex) inside our data whose ZIP has a small public population.
 
 ## 5. Leak catalog (what `setup/plant_leaks.py` creates)

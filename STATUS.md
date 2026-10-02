@@ -9,12 +9,12 @@
 - [x] `report/generate.py` (tested on sample data; run after the re-check round: `python -m report.generate` → `report/audit_report.md`)
 
 ## Manas
-- [x] Ollama + Gemma producing valid SQL (`gemma3:4b`, tested offline against CONTRACTS §3 schema)
-- [x] `referee/run_attacks.py`, `run_legit.py`, `run_round.py` written + tested with a fake connection; live test waiting on `.env` from Manav
-- [ ] A03 re-identification finalized against public table — blocked: needs CONTRACTS §4 table + columns
-- [x] `attacker/gemma_attacker.py` written (goals now carry their success rule; rejects fake column aliases); live run waiting on `.env`
+- [x] Ollama + Gemma producing valid SQL (`gemma3:4b`)
+- [x] `referee/run_attacks.py`, `run_legit.py`, `run_round.py` — live Round 1 on Snowflake: leaks 6/7, legit 10/10
+- [x] A03 re-identification on `DATA.ZIP_POPULATION` (CONTRACTS §4): live 137 re-identifiable patients with L3 planted, 0 with ZIP masked; `setup.verify` now runs it (uses `BETWEEN 0 AND 4999` because verify skips SQL containing `<`)
+- [x] `attacker/gemma_attacker.py` live: G001–G005 in `attacks/generated/`, 4 leak before fixes (G003 links name+diagnosis by joining PATIENT_DEMOGRAPHICS back to PATIENTS); goals can require several columns
+- [x] `legit/queries.yaml` Q04-Q10 (Reya's version kept, reviewed: aggregates only, survive masking)
 - [ ] Stretch: `chatbot/`
-- [x] `legit/queries.yaml` Q04-Q10 filled in by Reya (Manas: review, they run through your `run_legit.py`)
 
 ## Reya
 - [x] Connection smoke test passes (both roles); `.env` + key in place
