@@ -173,9 +173,9 @@ ul.r{{list-style:none;padding:0;margin:0}}ul.r li{{padding:6px 0;border-bottom:1
 .more>summary{{font-size:16px;color:var(--ink);font-weight:600;padding:14px 0}}.more .tbl{{margin-bottom:16px}}
 footer{{margin-top:48px;color:var(--m);font-size:13px;border-top:1px solid var(--line);padding-top:16px}}
 </style></head><body><main>
-<p class="k">LeakHunter · results</p>
-<h1>We attacked a Snowflake warehouse, fixed every leak we proved, and proved the fixes hold.</h1>
-<p class="lead">Synthetic hospital and HR data. Attacks run as a low-privilege analyst. Snapshot {e(d.get('generated_at'))}.</p>
+<p class="k">LeakHunter · leak audit · Snowflake</p>
+<h1>Every leak we could prove was fixed, and every fix was proven to hold.</h1>
+<p class="lead">LeakHunter attacks a data warehouse the way a real insider would, fixes what it proves, and re-checks that the fixes hold without breaking legitimate work. This run: synthetic hospital and HR data · snapshot {e(d.get('generated_at'))}.</p>
 
 <div class="hero">
 <div><div class="n">{leaks0} <small>&rarr;</small> {leaks1}</div><p>leaks found, then left after the fixes</p></div>
@@ -194,6 +194,14 @@ footer{{margin-top:48px;color:var(--m);font-size:13px;border-top:1px solid var(-
 <div class="tbl"><table><tr><th>Leak</th><th>Caught by</th><th>Fix</th><th>Status</th></tr>{findings}</table></div></section>
 
 <section><h2>Rounds</h2><ul class="r">{rounds}</ul></section>
+
+<section><h2>Plugging it into your data platform</h2><p class="sub">Built to run continuously against a real warehouse, not just this dataset.</p>
+<div class="steps">
+<div class="step"><b>Connect</b><p>Two roles: a low-privilege role to attack as, and an admin role to fix and log. Key-pair auth, no passwords.</p></div>
+<div class="step"><b>Schedule</b><p>Run a round after every schema change, grant, or on a timer. Every attack, fix and re-check is stored as an audit trail.</p></div>
+<div class="step"><b>Fix your way</b><p>The pii-guardian and Bouncer skills follow the open Agent Skills standard, so any agent or a plain script can apply the same playbook.</p></div>
+<div class="step"><b>Extend</b><p>Attacks and legitimate checks are plain YAML. Snowflake today; the attack, fix and prove loop is designed for other warehouses next.</p></div>
+</div></section>
 
 <section><details class="more"><summary>Guarding the door for AI agents: {len(b_block)} packages blocked · {fw_block} risky changes blocked, {fw_pass} passed</summary>
 <p class="sub"><b>Bouncer</b> checks every package an AI agent wants to install (invented names, look-alikes, brand-new releases).</p>
