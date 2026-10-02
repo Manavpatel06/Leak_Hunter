@@ -14,5 +14,21 @@ Before judges arrive: `python -m setup.reset && python -m setup.plant_leaks --al
 | 30 s | Judge | **Judge's turn:** judge runs one line from `demo/judge_breaks.sql`. Round → caught → fix → round → 0. |
 | 15 s | Reya | **Close:** "The skill is open source. Any company can run this on its own warehouse today." Show repo. |
 
+## Change Firewall beat (optional ~90 s, after the Re-check beat; this is the "agents are coming" answer)
+
+Setup once: `python demo/run_demo.py doctor` must say READY and `python -m firewall.selftest` ALL PASSED. Have
+`firewall/examples/` open in an editor. **Whole beat in one command:** `python demo/run_demo.py agent` (add `--merge --cleanup`
+to really apply the PASS and remove the demo view; add `--sample` if Ollama is not running).
+
+| Time | Beat |
+|---|---|
+| 15 s | **Ask CoCo:** "Build an analytics view of patients by ZIP and birth date." Say: "CoCo now has write access. What stops it creating a view that leaks patients?" |
+| 25 s | **Intercept:** the skill makes CoCo submit it: `python -m firewall.leakcheck --sql-file firewall/examples/bad_patient_analytics.sql`. Narrate the steps: clone, apply to the clone only, attack as the analyst. Output: `BLOCK`, with the canary patient re-identified by ZIP + birth date. "Like a rejected pull request, with the attack attached." |
+| 25 s | **Rewrite:** CoCo reads `feedback.reasons`, writes the `good_patient_analytics.sql` version (3-digit ZIP, decade, groups of 5+) and resubmits with `--merge`. `PASS`, merged. |
+| 15 s | **Record:** scoreboard "Change Firewall" panel shows BLOCKED then MERGED. "Compliance gets an audit trail for every agent change." |
+| 10 s | **Package Guard:** `python -m firewall.package_guard --sql-file firewall/examples/bad_package.sql` blocks a typosquatted package and an egress integration. |
+
+Say honestly if asked: "In the demo the skill makes CoCo use the gate; production enforcement needs a Snowflake-side hook, that's the roadmap. A PASS means not breakable by our attacks, not provably safe."
+
 Backup: if anything fails live, play the recorded video (recorded 3:00–3:10) and keep narrating.
 Likely judge questions: "Isn't this just Snowflake's data classification?" → classification finds where data is; we prove it's reachable and prove the fix. "You planted the leaks?" → "Then you plant one."

@@ -1,0 +1,32 @@
+# Package Guard policy. Names are compared lowercase with '_' treated as '-'.
+# Approved = ships in Snowflake's Anaconda channel and has no network/exec surface we worry about.
+approved:
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - statsmodels
+  - xgboost
+  - lightgbm
+  - matplotlib
+  - joblib
+  - pytz
+  - python-dateutil
+  - pyyaml
+  - cachetools
+  - snowflake-snowpark-python
+  - snowflake-ml-python
+# Always blocked, with the reason shown to the agent.
+denied:
+  paramiko: "SSH client: can tunnel data out of the warehouse"
+  pyngrok: "opens tunnels to the public internet"
+  scapy: "raw network access"
+  pexpect: "spawns and drives other processes"
+# Standard-library modules that give code a way out of the sandbox.
+denied_modules:
+  socket: "raw network access"
+  ftplib: "network egress"
+  smtplib: "network egress (email)"
+  telnetlib: "network egress"
+  subprocess: "runs other programs"
+  ctypes: "native code"
