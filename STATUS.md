@@ -14,10 +14,11 @@
 - [ ] Stretch: `chatbot/`
 
 ## Reya (from ~1:00)
-- [ ] Read README → AGENTS → PLAN → CONTRACTS, connection smoke test passes
-- [ ] `legit/queries.yaml` (10) + `referee/run_legit.py` hook with Manas
-- [ ] `scoreboard/app.py` (incl. Rejected panel)
-- [ ] `report/generate.py`
+- [ ] Read README → AGENTS → PLAN → CONTRACTS, connection smoke test passes (waiting on `.env` + key from Manav)
+- [x] `legit/queries.yaml` (10 queries, all safe under the §5 masking/revoke fixes) — runner `referee/run_legit.py` is Manas's
+- [x] `scoreboard/app.py` (incl. Rejected panel) — tested against a local stub; needs a live check once Snowflake is up
+- [x] `report/generate.py` → `report/audit_report.md` — tested against a local stub; needs a live check
+- [x] `firewall/` Change Firewall + Package Guard (`leakcheck`, `package_guard`, probes, examples, `python -m firewall.selftest` passes offline); `pii-guardian` skill updated to submit changes through it (heads-up Manav); scoreboard "Change Firewall" panel; DEMO.md beat added. Live Snowflake run pending `.env`.
 - [ ] Demo rehearsal, backup video, MLH submission by 3:20
 
 ## Checkpoints
