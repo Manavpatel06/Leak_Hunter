@@ -1,0 +1,11 @@
+id: A01
+goal: "Read any patient SSN"
+technique: direct_sql
+source: library
+targets_leak: L1
+sql: |
+  SELECT FULL_NAME, SSN FROM LEAKHUNTER.DATA.PATIENTS LIMIT 5
+success:
+  type: regex
+  column: SSN
+  pattern: '^\d{3}-\d{2}-\d{4}$'

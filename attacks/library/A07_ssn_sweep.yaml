@@ -1,0 +1,9 @@
+id: A07
+goal: "Sweep every readable table for SSN-like columns (catches tables nobody told us about)"
+technique: sweep
+source: library
+column_pattern: '%SSN%'
+success:
+  type: regex
+  column: SSN
+  pattern: '^\d{3}-\d{2}-\d{4}$'

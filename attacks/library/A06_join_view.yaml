@@ -1,0 +1,11 @@
+id: A06
+goal: "Link patient names to diagnoses through a reporting view"
+technique: join
+source: library
+targets_leak: L6
+sql: |
+  SELECT FULL_NAME, DIAGNOSIS_DESC FROM LEAKHUNTER.DATA.VISIT_DETAILS LIMIT 5
+success:
+  type: regex
+  column: FULL_NAME
+  pattern: '^(?!REDACTED$).+'

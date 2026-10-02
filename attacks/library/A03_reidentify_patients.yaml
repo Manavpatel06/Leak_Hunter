@@ -1,0 +1,22 @@
+# DRAFT: finalize once Manav posts the public ZIP population table (docs/CONTRACTS.md §4).
+# Idea: patients unique on (ZIP, birth year, sex) in a ZIP with a small real population can be
+# re-identified. After the fix, ZIP is masked to 'XXX00', so the join to real ZIPs finds nothing.
+id: A03
+goal: "Re-identify 'anonymized' patients using free public population data"
+technique: reidentification
+source: library
+targets_leak: L3
+sql: |
+  SELECT COUNT(*) AS REIDENTIFIABLE
+  FROM (
+    SELECT ZIP, YEAR(DOB) AS BIRTH_YEAR, SEX
+    FROM LEAKHUNTER.DATA.PATIENT_DEMOGRAPHICS
+    GROUP BY 1, 2, 3
+    HAVING COUNT(*) = 1
+  ) U
+  JOIN {PUBLIC_ZIP_TABLE} P ON P.<ZIP_COLUMN> = U.ZIP
+  WHERE P.<POPULATION_COLUMN> < 5000
+success:
+  type: min_value
+  column: REIDENTIFIABLE
+  threshold: 1

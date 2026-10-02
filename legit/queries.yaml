@@ -1,0 +1,21 @@
+# Legitimate analyst workload. Runs as LH_ANALYST. Must keep passing after every fix.
+- id: Q01
+  description: "Visits per department per month"
+  sql: |
+    SELECT DEPARTMENT, DATE_TRUNC('MONTH', VISIT_DATE) AS MONTH, COUNT(*) AS VISITS
+    FROM LEAKHUNTER.DATA.VISITS GROUP BY 1, 2
+  expect: nonempty
+- id: Q02
+  description: "Average salary by department"
+  sql: |
+    SELECT DEPARTMENT, AVG(SALARY) AS AVG_SALARY
+    FROM LEAKHUNTER.DATA.EMPLOYEES GROUP BY 1
+  expect: nonempty
+- id: Q03
+  description: "Patients by 3-digit ZIP area and birth decade"
+  sql: |
+    SELECT LEFT(ZIP, 3) AS ZIP3, FLOOR(YEAR(DOB) / 10) * 10 AS DECADE, COUNT(*) AS PATIENTS
+    FROM LEAKHUNTER.DATA.PATIENTS GROUP BY 1, 2
+  expect: nonempty
+# Q04..Q10: Reya to add (e.g. top diagnoses, cost per department, visits per patient histogram,
+# headcount by title, hires per year, average rating needs HR so DO NOT include reviews).

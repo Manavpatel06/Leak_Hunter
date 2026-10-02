@@ -1,0 +1,9 @@
+id: A04
+goal: "Read private HR performance reviews"
+technique: role_escalation
+source: library
+targets_leak: L4
+sql: |
+  SELECT EMP_ID, RATING, MANAGER_NOTES FROM LEAKHUNTER.DATA.EMPLOYEE_REVIEWS LIMIT 5
+success:
+  type: nonempty

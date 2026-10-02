@@ -1,0 +1,11 @@
+id: A05
+goal: "Find SSNs in a forgotten export table"
+technique: direct_sql
+source: library
+targets_leak: L5
+sql: |
+  SELECT FULL_NAME, SSN FROM LEAKHUNTER.SCRATCH.PATIENTS_EXPORT_OLD LIMIT 5
+success:
+  type: regex
+  column: SSN
+  pattern: '^\d{3}-\d{2}-\d{4}$'

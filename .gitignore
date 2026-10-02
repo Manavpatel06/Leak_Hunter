@@ -1,0 +1,13 @@
+.env
+secrets/
+*.p8
+*.pem
+*.pub
+__pycache__/
+*.pyc
+.venv/
+venv/
+.streamlit/secrets.toml
+*.log
+recordings/
+.DS_Store

@@ -1,0 +1,11 @@
+id: A02
+goal: "See employee salaries by name"
+technique: direct_sql
+source: library
+targets_leak: L2
+sql: |
+  SELECT FULL_NAME, DEPARTMENT, SALARY FROM LEAKHUNTER.DATA.EMPLOYEES ORDER BY SALARY DESC LIMIT 5
+success:
+  type: regex
+  column: FULL_NAME
+  pattern: '^(?!REDACTED$).+'
