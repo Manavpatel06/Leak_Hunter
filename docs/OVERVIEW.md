@@ -5,7 +5,7 @@
 
 **One AI attacks your Snowflake warehouse, another fixes every leak, and a referee proves the fixes hold without breaking anyone's legitimate work. Then two gates keep AI agents from opening new leaks: one for the changes they make, one for the packages they install.**
 
-Interactive version of everything below: open [`showcase.html`](showcase.html) in a browser.
+Results of the last full run: open [`../report/dashboard.html`](../report/dashboard.html) in a browser.
 
 ---
 
@@ -22,7 +22,7 @@ Security scanners tell you *where* sensitive data is. They do not tell you wheth
 |---|---|---|
 | **Warehouse** | A synthetic hospital + HR warehouse (2,000 patients, 6,000 visits, 300 employees) with six planted leaks, next to Snowflake's free public census data | Manav |
 | **Attacker** | Seven hand-written attacks plus Gemma-generated ones, run as a low-privilege role (`LH_ANALYST`, secondary roles off) | Manas |
-| **Defender** | CoCo with the open `pii-guardian` skill applies the smallest Snowflake-native fix: masking, revoke, drop | Manav |
+| **Defender** | The open `pii-guardian` skill (run by `defender/apply_fixes.py` or any agent) applies the smallest Snowflake-native fix: masking, revoke, drop | Manav |
 | **Referee** | Re-runs every attack and ten legitimate analyst queries each round. Success is leaks falling to zero while legitimate work still passes | Manas |
 | **Scoreboard** | Streamlit: leaks, legitimate queries working, round history, latest fixes, and a Rejected panel of attacks that failed and why | Reya |
 | **Bouncer** | A second skill that vets a Python package before an AI installs it | Reya |
@@ -102,7 +102,7 @@ python demo/run_demo.py doctor       # preflight: env, key, both roles, tables, 
 python demo/run_demo.py round        # one referee round
 python demo/run_demo.py agent        # Bouncer, then firewall BLOCK, then PASS
 python demo/run_demo.py scoreboard   # live scoreboard
-python demo/build_showcase.py        # rebuild the interactive dashboard from live data
+python demo/run_demo.py dashboard   # rebuild report/dashboard.html from live data
 python -m firewall.selftest          # offline proof the firewall logic works, no Snowflake needed
 ```
 
@@ -111,7 +111,7 @@ Setup, secrets and who owns what are in the [README](../README.md) and [`PLAN.md
 ## 8. Honest limits
 
 - A PASS means **not breakable by these attacks**, not provably safe. Differencing attacks are not built yet.
-- In the demo the `pii-guardian` skill tells CoCo to submit changes to the firewall. Real enforcement needs a Snowflake-side hook or proxy; that is the roadmap.
+- In the demo the `pii-guardian` skill tells the agent to submit changes to the firewall. Real enforcement needs a Snowflake-side hook or proxy; that is the roadmap.
 - Account-wide changes such as role grants cannot be tested on a clone, so they always go to a human.
 - Cloning a large database could be slow or costly. The demo warehouse is small, and roughly 5 of the firewall's ~14 seconds is Snowflake cloning one schema.
 - Bouncer catches invented, look-alike, brand-new and known-vulnerable packages. It does not catch a long-trusted package that was later hijacked; maintainer-history checks are on the roadmap.
@@ -128,6 +128,6 @@ Setup, secrets and who owns what are in the [README](../README.md) and [`PLAN.md
 | `skills/bouncer/` | The Bouncer skill |
 | `firewall/` | Change Firewall, Package Guard, probes, examples, offline self-test |
 | `scoreboard/` | Streamlit scoreboard |
-| `demo/`, `docs/showcase.html` | Demo runner and the interactive dashboard |
+| `demo/`, `report/dashboard.html` | Demo runner and the results dashboard |
 | `report/` | Audit report generator |
 | `leakhunter/` | Shared config and database helpers |

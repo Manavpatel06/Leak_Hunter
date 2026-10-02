@@ -2,7 +2,7 @@
 
 **Name:** LeakHunter
 
-**Tagline:** One AI attacks your Snowflake warehouse, another fixes every leak, and a referee proves the fixes hold without breaking anyone's work.
+**Tagline:** Continuous leak testing for data platforms: attack your warehouse like an insider, fix what's proven, prove the fix holds without breaking anyone's work.
 
 **Tracks:** Best Use of Snowflake · Best Open-Source AI Project
 
@@ -14,11 +14,11 @@ year. AI agents with warehouse access make it worse.
 ## What it does
 - **Attack:** an open-weight model (Gemma via Ollama) plus a hand-written attack library run SQL as a low-privilege analyst
   role: read SSNs, salaries by name, private HR reviews, forgotten exports, and a **re-identification attack that joins our
-  "anonymized" patient view with free US Census data from Snowflake Marketplace**. Result: [137] of 2,000 synthetic
+  "anonymized" patient view with free US Census data from Snowflake Marketplace**. Result: 137 of 2,000 synthetic
   patients singled out.
 - **Defend:** the open `pii-guardian` Agent Skill maps every proven leak to the smallest Snowflake-native fix (masking
   policies, revoked role grants, dropping scratch copies) and logs it.
-- **Prove:** a referee re-runs every attack *and* 10 legitimate analyst queries. Leaks [N] → 0, legitimate queries 10/10.
+- **Prove:** a referee re-runs every attack *and* 10 legitimate analyst queries. Leaks 11 → 0, legitimate queries 10/10.
 - **Judge's turn:** a judge opens a new hole live (e.g. a "quick export"); the SSN sweep catches it, it is fixed, re-proven.
 - **Agents at the door:** `Bouncer` (second Agent Skill) blocks invented or look-alike packages before an AI agent installs
   them; the **Change Firewall** tests any agent-proposed change on a zero-copy clone, attacks the clone, and only merges on PASS.
@@ -35,6 +35,9 @@ runs the skill's playbook as a script; any agent (CoCo on a paid account, Claude
 Making attacks honest: every attack runs as the analyst with secondary roles off, otherwise everything "succeeds".
 
 ## What's next
-Snowflake-side enforcement for the Change Firewall, maintainer-history checks for Bouncer, scheduled rounds.
+LeakHunter is meant to plug into any data provider, not just this demo: connect two roles, schedule rounds after every
+schema change or grant, and keep the audit trail for compliance. Next: adapters for other warehouses (the attack / fix /
+prove loop and the YAML attack + legit-query formats are warehouse-neutral), Snowflake-side enforcement for the Change
+Firewall, and maintainer-history checks for Bouncer.
 
 **Repo:** https://github.com/Manavpatel06/Leak_Hunter (MIT)

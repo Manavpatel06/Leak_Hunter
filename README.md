@@ -5,7 +5,7 @@
 sunhacks Hack Day (MLH Hacktoberfest), Oct 2, 2026 · Team: Manav, Manas, **Reya Attri**
 Tracks: Best Use of Snowflake · Best Open-Source AI Project · License: MIT
 
-> **See it first:** open [`docs/showcase.html`](docs/showcase.html) in any browser. It is an interactive dashboard of everything below, built from the live warehouse: fire the attacks, tick the fixes, slide a re-identification lab over 2,000 patients, submit changes to the firewall, check packages against live PyPI. No install, no server.
+> **See it first:** open [`report/dashboard.html`](report/dashboard.html) in any browser: the results of the last full run, built from live warehouse data.
 > For the full write-up (problem, design, results, limits), read [`docs/OVERVIEW.md`](docs/OVERVIEW.md).
 
 ---
@@ -38,14 +38,14 @@ Run the demo (all from the repo root):
 | `python demo/run_demo.py round` | One referee round: every attack and every legitimate query |
 | `python demo/run_demo.py agent` | The AI-agent story: Bouncer vets packages, the Change Firewall BLOCKs a leaky view, then PASSes the rewrite |
 | `python demo/run_demo.py scoreboard` | Live Streamlit scoreboard (leaks, legit queries, Rejected, Bouncer, Change Firewall panels) |
-| `python demo/build_showcase.py` | Rebuild the interactive dashboard `docs/showcase.html` from live data |
+| `python demo/run_demo.py dashboard` | Rebuild `report/dashboard.html` + `report/audit_report.md` from live data |
 | `python -m firewall.selftest` | Offline proof the firewall logic works (no Snowflake needed) |
 
 ## How it works
 
 1. **Setup** — synthetic hospital + HR warehouse with randomly planted weaknesses, next to Snowflake's free public zip-code population data.
 2. **Attack** — an open-weight model (Gemma via Ollama) with a low-privilege role tries to steal SSNs, salaries-by-name, and re-identify "anonymized" patients by joining with public data.
-3. **Fix** — CoCo, using our open-standard `pii-guardian` skill, applies Snowflake-native fixes (masking, row access, revoked grants).
+3. **Fix** — the defender applies our open-standard `pii-guardian` skill's playbook: Snowflake-native fixes (masking, revoked grants, dropped copies). Any agent that supports Agent Skills can run the same playbook.
 4. **Referee** — re-runs every attack *and* a set of legitimate analyst queries. Scoreboard: leaks remaining vs. legitimate queries still working.
 5. **Report** — plain-English audit summary, each leak tagged to the rule it breaks.
 6. **Bouncer** — a second skill that checks every Python package *before* an AI agent installs it, blocking packages the AI invented, look-alikes of popular packages, and brand-new ones. Leaks don't only come from permissions; they come from the code your AI installs.

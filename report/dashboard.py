@@ -68,148 +68,142 @@ def fetch() -> dict:
 
 
 # ------------------------------------------------------------------ rendering
+FIX_PLAIN = {
+    "L1": "Masked the SSN column. The analyst now sees ***-**-1234.",
+    "L2": "Masked employee names. Salaries stay visible, so averages still work.",
+    "L3": "Generalized ZIP to 3 digits and birth date to the year. The Census join finds no one.",
+    "L4": "Revoked the HR role from the analyst role.",
+    "L5": "Revoked analyst access to SCRATCH and dropped the stale copy.",
+    "L6": "Masked patient names. Diagnoses stay usable for reporting.",
+}
+LEAK_SHORT = {
+    "L1": "Patient SSNs readable", "L2": "Salaries readable by name", "L3": "“Anonymous” patients re-identified",
+    "L4": "HR reviews reachable via a role grant", "L5": "Forgotten raw export in SCRATCH",
+    "L6": "Names joined to diagnoses in a view",
+}
+
+
 def e(v) -> str:
     return html.escape("" if v is None else str(v))
 
 
-def chip(text: str, kind: str) -> str:
-    return f'<span class="chip {kind}">{e(text)}</span>'
-
-
-def bars(board: list[dict]) -> str:
-    if not board:
-        return '<p class="muted">No rounds yet.</p>'
-    w, h, pad = 560, 180, 28
-    top = max([int(r["ATTACKS"] or 0) for r in board] + [1])
-    n = len(board)
-    bw = min(56, (w - pad * 2) / n * 0.6)
-    out = [f'<svg viewBox="0 0 {w} {h + 60}" role="img" aria-label="Leaks per round">']
-    for i, r in enumerate(board):
-        x = pad + (i + 0.5) * (w - pad * 2) / n - bw / 2
-        att, leaks = int(r["ATTACKS"] or 0), int(r["LEAKS"] or 0)
-        ha, hl = h * att / top, h * leaks / top
-        out.append(f'<rect x="{x:.1f}" y="{h - ha + 24:.1f}" width="{bw:.1f}" height="{ha:.1f}" rx="4" class="bar-all"/>')
-        if leaks:
-            out.append(f'<rect x="{x:.1f}" y="{h - hl + 24:.1f}" width="{bw:.1f}" height="{hl:.1f}" rx="4" class="bar-leak"/>')
-        out.append(f'<text x="{x + bw / 2:.1f}" y="{h - ha + 18:.1f}" class="lbl">{leaks}/{att}</text>')
-        out.append(f'<text x="{x + bw / 2:.1f}" y="{h + 44}" class="axis">Round {r["ROUND_NO"]}</text>')
-    out.append("</svg>")
-    return "".join(out)
+def _findings_kind(raw) -> str:
+    try:
+        f = json.loads(raw or "{}").get("findings") or []
+        return f[0].get("kind", "").replace("_", " ") if f else "no leak found on the clone"
+    except Exception:
+        return "see audit trail"
 
 
 def build_html(d: dict) -> str:
     board, attacks, fixes = d["scoreboard"], d["attacks"], d["fixes"]
     first, last = (board[0], board[-1]) if board else ({}, {})
     reid = d["reidentified"][0]["N"] if d.get("reidentified") else None
-    blocks = sum(1 for b in d.get("bouncer", []) if b.get("VERDICT") == "BLOCK")
+    leaks0, leaks1 = int(first.get("LEAKS") or 0), int(last.get("LEAKS") or 0)
+    lp, lt = int(last.get("LEGIT_PASSED") or 0), int(last.get("LEGIT_TOTAL") or 0)
 
+    # group successful attacks by leak
     runs: dict[str, dict[int, bool]] = {}
     meta: dict[str, dict] = {}
     for a in attacks:
         r = runs.setdefault(a["ATTACK_ID"], {})
         r[int(a["ROUND_NO"])] = r.get(int(a["ROUND_NO"]), False) or bool(a["SUCCEEDED"])
         meta.setdefault(a["ATTACK_ID"], a)
-    fix_by = {}
-    for f in fixes:
-        fix_by.setdefault(f["ATTACK_ID"], f)
-    found = [k for k in sorted(runs) if any(runs[k].values())]
-
-    def kpi(label, value, sub, kind=""):
-        return f'<div class="kpi {kind}"><div class="kl">{e(label)}</div><div class="kv">{value}</div><div class="ks">{e(sub)}</div></div>'
-
-    leaks_now = int(last.get("LEAKS") or 0)
-    legit_ok = (last.get("LEGIT_PASSED") or 0) == (last.get("LEGIT_TOTAL") or 0) and last.get("LEGIT_TOTAL")
-    kpis = "".join([
-        kpi("Leaks", f'{first.get("LEAKS", 0) or 0} → {leaks_now}', f'round {first.get("ROUND_NO", "-")} → round {last.get("ROUND_NO", "-")}',
-            "good" if board and leaks_now == 0 else "bad"),
-        kpi("Legit queries", f'{last.get("LEGIT_PASSED", 0) or 0}/{last.get("LEGIT_TOTAL", 0) or 0}',
-            "nothing legitimate broken" if legit_ok else "check legit failures", "good" if legit_ok else "bad"),
-        kpi("Re-identified", "—" if reid is None else f"{reid}", "patients re-identifiable via free Census data when unmasked", "warn"),
-        kpi("Bouncer blocks", f"{blocks}", "bad packages stopped at the door", ""),
-    ])
+    fix_by = {f["ATTACK_ID"]: f for f in fixes}
+    groups: dict[str, list[str]] = {}
+    for aid in sorted(runs):
+        if not any(runs[aid].values()):
+            continue
+        leak = (meta[aid].get("TARGETS_LEAK") or "").upper() or ATTACK_TO_LEAK.get(aid, "") or "SWEEP"
+        groups.setdefault(leak, []).append(aid)
 
     rows = []
-    for aid in found:
-        m = meta[aid]
-        leak = (m.get("TARGETS_LEAK") or "").upper() or ATTACK_TO_LEAK.get(aid, "")
-        what = LEAK_TEXT.get(leak) or m.get("GOAL") or ""
-        f = fix_by.get(aid)
-        fix = (f"{e(f['FIX_TYPE'])} · {e(f['APPLIED_BY'])}<code>{e((f.get('SQL_APPLIED') or '').splitlines()[0] if f.get('SQL_APPLIED') else '')}</code>"
-               if f else '<span class="muted">none</span>')
-        last_r = max(runs[aid])
-        status = chip("still open", "bad") if runs[aid][last_r] else (
-            chip(f"closed · proven r{last_r}", "good") if last_r > min(r for r, ok in runs[aid].items() if ok)
-            else chip("not re-checked", "warn"))
-        src = f' <span class="muted">{e(m.get("SOURCE"))}</span>' if m.get("SOURCE") not in (None, "library") else ""
-        rows.append(f"<tr><td><b>{e(aid)}</b>{src}<div class='muted'>{e(leak)}</div></td><td>{e(what)}"
-                    f"<div class='tags'>{e('; '.join(_tags(leak, m.get('TECHNIQUE') or '', m.get('GOAL') or '')))}</div></td>"
-                    f"<td>{fix}</td><td>{status}</td></tr>")
-    findings = "".join(rows) or '<tr><td colspan="4" class="muted">No leaks found yet.</td></tr>'
+    for leak in sorted(groups, key=lambda k: (k == "SWEEP", k)):
+        aids = groups[leak]
+        still_open = any(runs[a][max(runs[a])] for a in aids)
+        if leak == "SWEEP":
+            title, fix = "SSN sweep found copies nobody listed", "Closed with the same fixes: SSN mask + SCRATCH revoked."
+            tags = "HIPAA minimum necessary"
+        else:
+            title, fix = LEAK_SHORT.get(leak, leak), FIX_PLAIN.get(leak, "")
+            tags = "; ".join(LEAK_TAGS.get(leak, []))
+        sqls = sorted({(fix_by[a].get("SQL_APPLIED") or "").strip() for a in aids if a in fix_by} - {""})
+        sql_html = (f'<details><summary>SQL</summary><pre>{e(chr(10).join(sqls))}</pre></details>' if sqls else "")
+        who = ", ".join(f'{a}{"*" if meta[a].get("SOURCE") == "gemma" else ""}' for a in aids)
+        status = '<span class="st open">Open</span>' if still_open else '<span class="st ok">Fixed &amp; re-checked</span>'
+        rows.append(f"<tr><td><div class='t'>{e(title)}</div><div class='m'>{e(tags)}</div></td>"
+                    f"<td class='m'>{e(who)}</td><td>{e(fix)}{sql_html}</td><td>{status}</td></tr>")
+    findings = "".join(rows) or "<tr><td colspan='4' class='m'>No leaks found yet.</td></tr>"
 
-    last_round = int(last.get("ROUND_NO") or 0)
-    rejected = [a for a in attacks if int(a["ROUND_NO"]) == last_round and not a["SUCCEEDED"]]
-    rej_rows = "".join(
-        f"<tr><td><b>{e(a['ATTACK_ID'])}</b></td><td>{e(a.get('GOAL'))}</td>"
-        f"<td>{e((a.get('ERROR') or '').split(':')[0][:60] or 'blocked by masking / no rows')}</td></tr>"
-        for a in rejected) or '<tr><td colspan="3" class="muted">None.</td></tr>'
+    b = d.get("bouncer", [])
+    b_block = [x for x in b if x.get("VERDICT") == "BLOCK"]
+    fw = d.get("firewall", [])
+    fw_block, fw_pass = sum(1 for x in fw if x.get("VERDICT") == "BLOCK"), sum(1 for x in fw if x.get("VERDICT") == "PASS")
+    b_rows = "".join(f"<tr><td><code>{e(x['PACKAGE'])}</code></td><td>{e(x['VERDICT'])}</td><td class='m'>{e((x.get('REASONS') or '').split(';')[0])}</td></tr>" for x in b[:8])
+    fw_rows = "".join(f"<tr><td><code>{e(x['CHANGE_ID'])}</code></td><td>{e(x['VERDICT'])}{' · merged' if x.get('MERGED') else ''}</td><td class='m'>{e(_findings_kind(x.get('FINDINGS')))}</td></tr>" for x in fw[:8])
 
-    legit_last = [q for q in d.get("legit", []) if int(q["ROUND_NO"]) == last_round]
-    legit_rows = "".join(f"<tr><td>{e(q['QUERY_ID'])}</td><td>{e(q.get('DESCRIPTION'))}</td>"
-                         f"<td>{chip('pass', 'good') if q['PASSED'] else chip('fail', 'bad')}</td></tr>"
-                         for q in legit_last) or '<tr><td colspan="3" class="muted">No legit runs yet.</td></tr>'
-
-    vk = {"BLOCK": "bad", "WARN": "warn", "ALLOW": "good", "PASS": "good", "ERROR": "bad"}
-    bouncer_rows = "".join(f"<tr><td><code>{e(b['PACKAGE'])}</code></td><td>{chip(b['VERDICT'], vk.get(b['VERDICT'], ''))}</td>"
-                           f"<td>{e(b.get('REASONS'))}</td><td>{e(b.get('REQUESTED_BY'))}</td></tr>"
-                           for b in d.get("bouncer", [])) or '<tr><td colspan="4" class="muted">No checks yet.</td></tr>'
-    fw_rows = "".join(f"<tr><td><code>{e(c['CHANGE_ID'])}</code></td><td>{e(c.get('SUBMITTED_BY'))}</td>"
-                      f"<td>{chip(c['VERDICT'], vk.get(c['VERDICT'], ''))}{' · merged' if c.get('MERGED') else ''}</td>"
-                      f"<td>{e(c.get('FINDINGS'))}</td></tr>"
-                      for c in d.get("firewall", [])) or '<tr><td colspan="4" class="muted">No changes submitted yet.</td></tr>'
+    rounds = "".join(f"<li><b>Round {r['ROUND_NO']}</b> {int(r['LEAKS'] or 0)} of {int(r['ATTACKS'] or 0)} attacks leaked · "
+                     f"legit {int(r['LEGIT_PASSED'] or 0)}/{int(r['LEGIT_TOTAL'] or 0)}</li>" for r in board)
+    n_gemma = sum(1 for a in groups.values() for x in a if meta[x].get("SOURCE") == "gemma")
 
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>LeakHunter Results</title>
 <style>
-:root{{--bg:#f7f7f5;--card:#fff;--ink:#1d1d1b;--muted:#6b6b66;--line:#e4e3de;--good:#1f7a4d;--goodbg:#e3f3ea;
---bad:#b42318;--badbg:#fdecea;--warn:#8a5a00;--warnbg:#fdf3dc;--accent:#2f5bd3;--barall:#d7d6d0}}
-@media (prefers-color-scheme:dark){{:root{{--bg:#151514;--card:#1f1f1d;--ink:#ecebe6;--muted:#a3a29b;--line:#34332f;
---good:#5cc98f;--goodbg:#173324;--bad:#ff8a7a;--badbg:#3a1b17;--warn:#f0c060;--warnbg:#3a2e12;--accent:#8aa8ff;--barall:#3a3935}}}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}}
-main{{max-width:1100px;margin:0 auto;padding:28px 16px 60px}}h1{{font-size:28px;margin:0}}h2{{font-size:17px;margin:0 0 12px}}
-.sub{{color:var(--muted);margin:4px 0 22px}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px}}
-.kpi,.card{{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}}
-.kl{{color:var(--muted);font-size:13px}}.kv{{font-size:30px;font-weight:700;margin:2px 0}}.ks{{color:var(--muted);font-size:13px}}
-.kpi.good .kv{{color:var(--good)}}.kpi.bad .kv{{color:var(--bad)}}.kpi.warn .kv{{color:var(--warn)}}
-.card{{margin-bottom:16px;overflow-x:auto}}table{{width:100%;border-collapse:collapse;font-size:14px}}
-th,td{{text-align:left;padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}}th{{color:var(--muted);font-weight:600;border-top:0}}
-code{{display:block;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--muted);margin-top:4px;word-break:break-word}}
-.muted{{color:var(--muted)}}.tags{{color:var(--muted);font-size:12px;margin-top:4px}}
-.chip{{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}}
-.chip.good{{background:var(--goodbg);color:var(--good)}}.chip.bad{{background:var(--badbg);color:var(--bad)}}.chip.warn{{background:var(--warnbg);color:var(--warn)}}
-svg{{width:100%;max-width:640px;height:auto}}.bar-all{{fill:var(--barall)}}.bar-leak{{fill:var(--bad)}}
-.lbl{{fill:var(--ink);font-size:12px;text-anchor:middle;font-weight:600}}.axis{{fill:var(--muted);font-size:12px;text-anchor:middle}}
-.two{{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}}.two .card{{margin:0}}
-footer{{color:var(--muted);font-size:13px;margin-top:20px}}
+:root{{--bg:#fafaf9;--card:#ffffff;--ink:#1c1c1a;--m:#6a6a64;--line:#e7e6e1;--accent:#1f4e8c;--ok:#1d6b45;--okbg:#e8f3ec;--bad:#a8261b;--badbg:#fbeceb}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#141413;--card:#1c1c1b;--ink:#ebeae5;--m:#a09f98;--line:#2f2e2b;--accent:#8fb3e8;--ok:#6ccf98;--okbg:#16301f;--bad:#ff8f80;--badbg:#381a16}}}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}}
+main{{max-width:980px;margin:0 auto;padding:40px 16px 64px}}
+.k{{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--m);margin:0 0 6px}}
+h1{{font-size:30px;line-height:1.2;margin:0 0 8px;font-weight:700}}.lead{{color:var(--m);max-width:680px;margin:0}}
+h2{{font-size:19px;margin:0 0 4px}}.sub{{color:var(--m);margin:0 0 16px;font-size:15px}}
+section{{margin-top:40px}}
+.hero{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:28px}}
+.hero div{{background:var(--card);padding:22px}}.n{{font-size:36px;font-weight:700;line-height:1.1}}.n small{{font-size:20px;color:var(--m);font-weight:600}}
+.hero p{{margin:6px 0 0;color:var(--m);font-size:14px}}
+.steps{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}}
+.step{{border-top:2px solid var(--accent);padding-top:12px}}.step b{{display:block;margin-bottom:4px}}.step p{{margin:0;color:var(--m);font-size:15px}}
+.tbl{{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto}}
+table{{width:100%;border-collapse:collapse;font-size:15px}}th,td{{text-align:left;padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}}
+th{{border-top:0;font-size:13px;color:var(--m);font-weight:600}}.t{{font-weight:600}}.m{{color:var(--m);font-size:13px}}
+.st{{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}}
+.st.ok{{background:var(--okbg);color:var(--ok)}}.st.open{{background:var(--badbg);color:var(--bad)}}
+details{{margin-top:6px}}summary{{cursor:pointer;color:var(--accent);font-size:13px}}
+pre,code{{font:12.5px/1.45 ui-monospace,Consolas,monospace}}pre{{white-space:pre-wrap;word-break:break-word;color:var(--m);margin:6px 0 0}}
+ul.r{{list-style:none;padding:0;margin:0}}ul.r li{{padding:6px 0;border-bottom:1px solid var(--line)}}
+.more>summary{{font-size:16px;color:var(--ink);font-weight:600;padding:14px 0}}.more .tbl{{margin-bottom:16px}}
+footer{{margin-top:48px;color:var(--m);font-size:13px;border-top:1px solid var(--line);padding-top:16px}}
 </style></head><body><main>
-<h1>LeakHunter</h1>
-<p class="sub">One AI attacks the Snowflake warehouse, the defender fixes every proven leak, the referee proves the fixes hold
-without breaking legitimate work. Snapshot {e(d.get('generated_at'))} · all data synthetic.</p>
-<div class="grid">{kpis}</div>
-<div class="two">
-<div class="card"><h2>Leaks per round</h2>{bars(board)}<p class="muted" style="margin:6px 0 0">Red = attacks that leaked · grey = attacks tried.</p></div>
-<div class="card"><h2>Legitimate analyst queries (latest round)</h2><table><tr><th>ID</th><th>Query</th><th></th></tr>{legit_rows}</table></div>
+<p class="k">LeakHunter · results</p>
+<h1>We attacked a Snowflake warehouse, fixed every leak we proved, and proved the fixes hold.</h1>
+<p class="lead">Synthetic hospital and HR data. Attacks run as a low-privilege analyst. Snapshot {e(d.get('generated_at'))}.</p>
+
+<div class="hero">
+<div><div class="n">{leaks0} <small>&rarr;</small> {leaks1}</div><p>leaks found, then left after the fixes</p></div>
+<div><div class="n">{lp}<small>/{lt}</small></div><p>legitimate analyst queries still work</p></div>
+<div><div class="n">{'—' if reid is None else reid}<small> / 2,000</small></div><p>&ldquo;anonymous&rdquo; patients re-identified with free Census data, before the fix</p></div>
 </div>
-<div class="card" style="margin-top:16px"><h2>Findings: every leak, the rule it breaks, the fix, the proof</h2>
-<table><tr><th>Attack</th><th>What leaked</th><th>Fix applied</th><th>Re-check</th></tr>{findings}</table></div>
-<div class="card"><h2>Rejected: what the attacker tried in the latest round that did not work</h2>
-<table><tr><th>Attack</th><th>Goal</th><th>Why it failed</th></tr>{rej_rows}</table></div>
-<div class="two">
-<div class="card"><h2>Bouncer: packages AI agents asked to install</h2><table><tr><th>Package</th><th>Verdict</th><th>Why</th><th>By</th></tr>{bouncer_rows}</table></div>
-<div class="card"><h2>Change Firewall: changes tested on a clone first</h2><table><tr><th>Change</th><th>By</th><th>Verdict</th><th>Findings</th></tr>{fw_rows}</table></div>
-</div>
-<footer>Attacks and legitimate queries run as the low-privilege <b>LH_ANALYST</b> role (secondary roles off). Fixes are Snowflake-native:
-masking policies, revoked grants, dropped scratch copies. Sample rows from attacks are deliberately left out. Regulation tags are
-pointers for a reviewer, not legal advice. Open source (MIT): pii-guardian + bouncer Agent Skills, Gemma attacker.</footer>
+
+<section><h2>How it works</h2><p class="sub">Three steps, run as many rounds as you like.</p>
+<div class="steps">
+<div class="step"><b>1 · Attack</b><p>A hand-written attack library plus attacks written by Gemma (an open model, run locally) query the warehouse as the analyst role.</p></div>
+<div class="step"><b>2 · Fix</b><p>The open pii-guardian skill maps each proven leak to the smallest Snowflake-native fix: a masking policy, a revoked grant, or a dropped copy.</p></div>
+<div class="step"><b>3 · Prove</b><p>The referee re-runs every attack and ten legitimate analyst queries. Success means leaks at zero and nothing legitimate broken.</p></div>
+</div></section>
+
+<section><h2>What leaked, and how it was fixed</h2><p class="sub">Grouped by root cause. * = attack written by Gemma.</p>
+<div class="tbl"><table><tr><th>Leak</th><th>Caught by</th><th>Fix</th><th>Status</th></tr>{findings}</table></div></section>
+
+<section><h2>Rounds</h2><ul class="r">{rounds}</ul></section>
+
+<section><details class="more"><summary>Guarding the door for AI agents: {len(b_block)} packages blocked · {fw_block} risky changes blocked, {fw_pass} passed</summary>
+<p class="sub"><b>Bouncer</b> checks every package an AI agent wants to install (invented names, look-alikes, brand-new releases).</p>
+<div class="tbl"><table><tr><th>Package</th><th>Verdict</th><th>Main reason</th></tr>{b_rows or "<tr><td colspan='3' class='m'>No checks yet.</td></tr>"}</table></div>
+<p class="sub"><b>Change Firewall</b> applies an agent's proposed change to a zero-copy clone, attacks the clone, and only allows it if nothing leaks.</p>
+<div class="tbl"><table><tr><th>Change</th><th>Verdict</th><th>Main finding</th></tr>{fw_rows or "<tr><td colspan='3' class='m'>No changes yet.</td></tr>"}</table></div>
+</details></section>
+
+<footer>All data is synthetic (SSNs start with 9, never issued). Attack sample rows are deliberately not shown. Regulation tags
+are pointers for a reviewer, not legal advice. Open source (MIT): github.com/Manavpatel06/Leak_Hunter</footer>
 </main></body></html>"""
 
 
