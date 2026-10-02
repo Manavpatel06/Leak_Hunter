@@ -10,7 +10,7 @@
 ## Manas
 - [x] Ollama + Gemma producing valid SQL (`gemma3:4b`, tested offline against CONTRACTS §3 schema)
 - [x] `referee/run_attacks.py`, `run_legit.py`, `run_round.py` written + tested with a fake connection; live test waiting on `.env` from Manav
-- [ ] `legit/queries.yaml` (10 queries)
+- [x] `legit/queries.yaml` (10 queries) — base tables only, no names/SSNs; pass on a DuckDB mock with and without masking
 - [ ] A03 re-identification finalized against public table — blocked: needs CONTRACTS §4 table + columns
 - [x] `attacker/gemma_attacker.py` written (goals now carry their success rule; rejects fake column aliases); live run waiting on `.env`
 - [ ] Stretch: `chatbot/`

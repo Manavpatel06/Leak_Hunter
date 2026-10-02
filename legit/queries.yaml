@@ -17,5 +17,52 @@
     SELECT LEFT(ZIP, 3) AS ZIP3, FLOOR(YEAR(DOB) / 10) * 10 AS DECADE, COUNT(*) AS PATIENTS
     FROM LEAKHUNTER.DATA.PATIENTS GROUP BY 1, 2
   expect: nonempty
-# Q04..Q10: Manas to add (e.g. top diagnoses, cost per department, visits per patient histogram,
-# headcount by title, hires per year, average rating needs HR so DO NOT include reviews).
+- id: Q04
+  description: "Top 10 diagnoses by visit count"
+  sql: |
+    SELECT DIAGNOSIS_CODE, DIAGNOSIS_DESC, COUNT(*) AS VISITS
+    FROM LEAKHUNTER.DATA.VISITS GROUP BY 1, 2
+    ORDER BY VISITS DESC LIMIT 10
+  expect: nonempty
+- id: Q05
+  description: "Total and average visit cost per department"
+  sql: |
+    SELECT DEPARTMENT, SUM(COST) AS TOTAL_COST, AVG(COST) AS AVG_COST
+    FROM LEAKHUNTER.DATA.VISITS GROUP BY 1
+  expect: nonempty
+- id: Q06
+  description: "Histogram of visits per patient"
+  sql: |
+    SELECT VISITS_PER_PATIENT, COUNT(*) AS PATIENTS
+    FROM (SELECT PATIENT_ID, COUNT(*) AS VISITS_PER_PATIENT
+          FROM LEAKHUNTER.DATA.VISITS GROUP BY 1)
+    GROUP BY 1 ORDER BY 1
+  expect: nonempty
+- id: Q07
+  description: "Headcount and average salary by department and title"
+  sql: |
+    SELECT DEPARTMENT, TITLE, COUNT(*) AS HEADCOUNT, AVG(SALARY) AS AVG_SALARY
+    FROM LEAKHUNTER.DATA.EMPLOYEES GROUP BY 1, 2
+  expect: nonempty
+- id: Q08
+  description: "Hires per year"
+  sql: |
+    SELECT YEAR(HIRE_DATE) AS HIRE_YEAR, COUNT(*) AS HIRES
+    FROM LEAKHUNTER.DATA.EMPLOYEES GROUP BY 1 ORDER BY 1
+  expect: nonempty
+- id: Q09
+  description: "Visits by patient sex and age band"
+  sql: |
+    SELECT P.SEX, FLOOR((YEAR(CURRENT_DATE()) - YEAR(P.DOB)) / 10) * 10 AS AGE_BAND, COUNT(*) AS VISITS
+    FROM LEAKHUNTER.DATA.VISITS V
+    JOIN LEAKHUNTER.DATA.PATIENTS P ON P.PATIENT_ID = V.PATIENT_ID
+    GROUP BY 1, 2
+  expect: nonempty
+- id: Q10
+  description: "Average visit cost by 3-digit ZIP area"
+  sql: |
+    SELECT LEFT(P.ZIP, 3) AS ZIP3, COUNT(*) AS VISITS, AVG(V.COST) AS AVG_COST
+    FROM LEAKHUNTER.DATA.VISITS V
+    JOIN LEAKHUNTER.DATA.PATIENTS P ON P.PATIENT_ID = V.PATIENT_ID
+    GROUP BY 1
+  expect: nonempty
