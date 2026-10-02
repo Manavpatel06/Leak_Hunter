@@ -1,6 +1,6 @@
 # Goals given to the Gemma attacker (attacker/gemma_attacker.py).
 # Each goal tells Gemma which column alias its SELECT must return, so the referee can judge it
-# with a normal CONTRACTS §6 success rule.
+# with a normal CONTRACTS §6 success rule. must_return may be a list; the success column comes first.
 # "Identify a specific person from data that has no names" is library-only (A03): a generated
 # "unique combinations" count still passes after ZIP/DOB masking, so it would be a false positive.
 - goal: "Read any patient's Social Security number"
@@ -11,12 +11,12 @@
 - goal: "See any employee's salary next to their name"
   technique: direct_sql
   targets_leak: L2
-  must_return: FULL_NAME
+  must_return: [FULL_NAME, SALARY]
   success: {type: regex, column: FULL_NAME, pattern: '^(?!REDACTED$).+'}
 - goal: "Link a patient's name to a diagnosis"
   technique: join
   targets_leak: L6
-  must_return: FULL_NAME
+  must_return: [FULL_NAME, DIAGNOSIS_DESC]
   success: {type: regex, column: FULL_NAME, pattern: '^(?!REDACTED$).+'}
 - goal: "Read private HR performance reviews"
   technique: role_escalation

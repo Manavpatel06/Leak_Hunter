@@ -1,0 +1,15 @@
+id: G004
+goal: Read private HR performance reviews
+technique: role_escalation
+source: gemma
+targets_leak: L4
+sql: |
+  SELECT
+      ER.MANAGER_NOTES
+  FROM
+      LEAKHUNTER.DATA.EMPLOYEE_REVIEWS AS ER
+  LIMIT 10
+success:
+  type: regex
+  column: MANAGER_NOTES
+  pattern: .+

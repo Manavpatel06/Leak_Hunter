@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeakHunter Showcase</title>
+<style>
+:root{
+  --bg:#0b0f17; --panel:#121927; --panel2:#182136; --line:#243049; --text:#e8edf7; --mute:#93a0b8;
+  --teal:#2dd4bf; --violet:#8b7cf6; --red:#ff5d6c; --green:#34d399; --amber:#fbbf24; --blue:#60a5fa;
+  --glow:0 0 0 1px var(--line), 0 10px 40px rgba(0,0,0,.35);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root{--bg:#f5f7fb;--panel:#fff;--panel2:#eef2f9;--line:#d9e0ee;--text:#111827;--mute:#5b6679;--glow:0 0 0 1px var(--line),0 8px 28px rgba(20,30,60,.08)}
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,rgba(139,124,246,.18),transparent),radial-gradient(900px 500px at -10% 10%,rgba(45,212,191,.14),transparent),var(--bg);
+  color:var(--text);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+header{position:sticky;top:0;z-index:20;backdrop-filter:blur(12px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:18px;padding:12px 0;flex-wrap:wrap}
+.logo{font-weight:800;letter-spacing:.3px;font-size:19px;display:flex;align-items:center;gap:9px}
+.logo i{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--teal),var(--violet));display:inline-block;position:relative}
+.logo i:after{content:"";position:absolute;inset:7px;border-radius:50%;border:2px solid #0b0f17}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;color:var(--mute);font:inherit;font-size:14px;padding:8px 13px;border-radius:9px;cursor:pointer}
+nav button:hover{color:var(--text);background:var(--panel)} nav button.on{color:var(--text);background:var(--panel2);box-shadow:inset 0 -2px 0 var(--teal)}
+.stamp{margin-left:auto;color:var(--mute);font-size:12px}
+section{display:none;padding:34px 0 70px;animation:in .35s ease} section.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+h1{font-size:clamp(34px,5.5vw,58px);line-height:1.04;margin:10px 0 14px;letter-spacing:-.02em}
+h1 em{font-style:normal;background:linear-gradient(90deg,var(--teal),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:26px;margin:0 0 6px;letter-spacing:-.01em} h3{margin:0 0 6px;font-size:17px}
+.lead{color:var(--mute);font-size:18px;max-width:760px} .mute{color:var(--mute)} .small{font-size:13px}
+.grid{display:grid;gap:14px} .g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))} .g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))} .g4{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.card{background:var(--panel);border-radius:16px;padding:18px;box-shadow:var(--glow)}
+.stat{padding:16px 18px} .stat .n{font-size:40px;font-weight:800;line-height:1;letter-spacing:-.02em} .stat .l{color:var(--mute);font-size:13px;margin-top:6px}
+.red{color:var(--red)} .green{color:var(--green)} .amber{color:var(--amber)} .teal{color:var(--teal)} .violet{color:var(--violet)}
+.chip{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.3px}
+.chip.red{background:rgba(255,93,108,.15)} .chip.green{background:rgba(52,211,153,.15)} .chip.amber{background:rgba(251,191,36,.16)} .chip.grey{background:var(--panel2);color:var(--mute)} .chip.blue{background:rgba(96,165,250,.15);color:var(--blue)}
+button.act{background:linear-gradient(135deg,var(--teal),var(--violet));color:#071018;border:0;font:inherit;font-weight:700;padding:10px 18px;border-radius:11px;cursor:pointer}
+button.act:hover{filter:brightness(1.08)} button.act:disabled{opacity:.5;cursor:default}
+button.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line);font:inherit;padding:8px 14px;border-radius:10px;cursor:pointer} button.ghost:hover{border-color:var(--teal)}
+button.ghost.on{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset}
+pre,code{font-family:var(--mono)} pre{background:#070b12;color:#d6e2ff;border-radius:12px;padding:14px;overflow:auto;font-size:13px;line-height:1.5;margin:0;border:1px solid var(--line)}
+.kw{color:#8b7cf6}.fn{color:#2dd4bf}.st{color:#fbbf24}
+.feat{cursor:pointer;transition:.2s} .feat:hover{transform:translateY(-3px);box-shadow:0 0 0 1px var(--teal),0 14px 40px rgba(0,0,0,.35)}
+.feat .ic{font-size:26px} .feat p{margin:6px 0 0;color:var(--mute);font-size:14px}
+.steps{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.step{flex:1;min-width:130px;background:var(--panel);border-radius:12px;padding:11px 13px;cursor:pointer;box-shadow:var(--glow);border:1px solid transparent}
+.step b{display:block;font-size:13px;color:var(--mute);font-weight:600} .step.on{border-color:var(--teal)} .step.done b{color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:14px} th{text-align:left;color:var(--mute);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)} td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.atk{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border-radius:12px;background:var(--panel2);margin-bottom:8px;border-left:4px solid var(--line);transition:.35s}
+.atk.leak{border-color:var(--red)} .atk.safe{border-color:var(--green)} .atk.err{border-color:var(--amber)}
+.atk .id{font-family:var(--mono);font-weight:700;min-width:42px} .atk .meta{flex:1;min-width:0} .atk .ev{font-family:var(--mono);font-size:12px;color:var(--mute);white-space:pre-wrap;word-break:break-word}
+.toggle{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--panel2);border-radius:11px;margin-bottom:7px;cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--teal);width:17px;height:17px}
+.big{font-size:84px;font-weight:900;line-height:1;letter-spacing:-.04em}
+.bar2{height:22px;border-radius:7px;background:var(--panel2);overflow:hidden;position:relative}
+.bar2 span{position:absolute;inset:0 auto 0 0;border-radius:7px;transition:width .35s} .row{display:grid;grid-template-columns:90px 1fr 60px;gap:10px;align-items:center;margin:6px 0;font-size:14px}
+input[type=range]{width:100%;accent-color:var(--teal)} label.lab{display:block;font-size:13px;color:var(--mute);margin:14px 0 4px} input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:11px 13px;border-radius:11px;font:inherit}
+.pipe{display:flex;flex-direction:column;gap:7px}
+.ps{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:9px 12px;border-radius:11px;background:var(--panel2);opacity:.45;transition:.3s}
+.ps.run{opacity:1;box-shadow:0 0 0 1px var(--teal) inset} .ps.ok{opacity:1} .ps.bad{opacity:1;box-shadow:0 0 0 1px var(--red) inset} .ps.skip{opacity:.25}
+.ps .dot{width:24px;height:24px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:12px;font-weight:800}
+.ps.ok .dot{background:var(--green);color:#052} .ps.bad .dot{background:var(--red);color:#fff} .ps.run .dot{background:var(--teal);color:#052;animation:pulse 1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(45,212,191,.22)}}
+.verdict{border-radius:16px;padding:18px;border:1px solid var(--line);margin-top:14px}
+.verdict.block{background:rgba(255,93,108,.08);border-color:rgba(255,93,108,.5)} .verdict.pass{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.5)}
+.verdict .v{font-size:30px;font-weight:900;letter-spacing:.5px}
+.find{border-left:3px solid var(--red);padding:6px 12px;margin:10px 0;background:var(--panel2);border-radius:0 10px 10px 0}
+.find .ev{font-family:var(--mono);font-size:12px;color:var(--mute);word-break:break-word}
+.svgbox svg{width:100%;height:auto} .node{cursor:pointer;transition:.2s} .node rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5} .node:hover rect,.node.on rect{stroke:var(--teal)} .node text{fill:var(--text);font:600 13px system-ui} .node .sub{fill:var(--mute);font:11px system-ui}
+.edge{stroke:var(--mute);stroke-width:1.6;fill:none;opacity:.55} .edge.hot{stroke:var(--teal);opacity:1;stroke-width:2.4}
+.copy{position:relative} .copy button{position:absolute;right:8px;top:8px}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--mute);font-size:13px}
+.person{display:flex;gap:14px} .av{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-weight:800;font-size:18px;color:#071018;flex:none}
+ul.tight{margin:6px 0 0;padding-left:18px;color:var(--mute);font-size:14px} ul.tight li{margin:3px 0}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mute);margin-top:6px}
+@media (max-width:640px){.big{font-size:60px}.stamp{display:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap bar">
+  <div class="logo"><i></i>LeakHunter</div>
+  <nav id="nav"></nav>
+  <div class="stamp" id="stamp"></div>
+</div></header>
+<main class="wrap">
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <div class="mute small" style="letter-spacing:.14em;text-transform:uppercase">sunhacks Hack Day · Snowflake · open source</div>
+  <h1>One AI attacks your warehouse.<br><em>Another fixes it. A referee proves it.</em></h1>
+  <p class="lead">LeakHunter finds data leaks the way a real attacker would, closes them with Snowflake-native controls, and then guards the door against the two ways an AI agent can open a new one: a bad change to the warehouse, and a bad package.</p>
+  <div class="grid g4" style="margin:26px 0 8px" id="stats"></div>
+  <div class="small mute" id="statnote"></div>
+  <h2 style="margin-top:34px">Everything we built <span class="mute" style="font-size:15px;font-weight:400">· click a card to try it</span></h2>
+  <div class="grid g3" style="margin-top:12px" id="features"></div>
+</section>
+
+<!-- ============ LOOP ============ -->
+<section id="loop">
+  <h2>The loop: attack, fix, re-check</h2>
+  <p class="lead">Real attacks from the real warehouse, run as a low-privilege analyst. Then close each leak and watch the number fall without breaking anyone's work.</p>
+  <div class="steps" id="steps"></div>
+  <div class="grid g2">
+    <div class="card" id="loopMain"></div>
+    <div class="card">
+      <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap">
+        <div><div class="mute small">Leaks</div><div class="big" id="bigLeaks">–</div></div>
+        <div><div class="mute small">Legitimate queries working</div><div class="big green" id="bigLegit">–</div></div>
+      </div>
+      <div class="legend"><span>● <span class="red">leak</span></span><span>● <span class="green">blocked</span></span><span>● <span class="amber">could not run</span></span></div>
+      <div id="loopSide" style="margin-top:14px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LAB ============ -->
+<section id="lab">
+  <h2>Re-identification lab</h2>
+  <p class="lead">"Anonymized" data has no names, yet ZIP + birth date + sex pins down individuals. This runs on the <b id="labN">2,000</b> synthetic patients in the warehouse, right in your browser. Generalize until nobody stands out. This is exactly the check the Change Firewall runs.</p>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <button class="ghost" data-p="raw">Raw: what a careless view exposes</button>
+        <button class="ghost" data-p="fw">Firewall-approved rewrite</button>
+        <button class="ghost" data-p="mask">What the mask policies alone show</button>
+      </div>
+      <label class="lab">ZIP precision: <b id="zipV"></b></label><input type="range" id="zip" min="0" max="5" value="5">
+      <label class="lab">Birth date: <b id="dobV"></b></label><input type="range" id="dob" min="0" max="4" value="4">
+      <label class="lab"><input type="checkbox" id="sex" checked style="accent-color:var(--teal)"> include sex</label>
+      <label class="lab">Minimum group size (k): <b id="kV"></b></label><input type="range" id="k" min="2" max="20" value="5">
+      <label class="lab"><input type="checkbox" id="supp" style="accent-color:var(--teal)"> drop groups smaller than k <code>(HAVING COUNT(*) &gt;= k)</code></label>
+      <p class="small mute" style="margin-top:14px">Verdict rule from <code>firewall/probes.py</code>: BLOCK if anyone shares their combination with fewer than k−1 other people.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap">
+        <div><div class="mute small">patients at risk</div><div class="big" id="risk">–</div></div>
+        <div id="labVerdict"></div>
+      </div>
+      <div class="mute small" id="labDetail" style="margin:8px 0 12px"></div>
+      <div id="hist"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FIREWALL ============ -->
+<section id="firewall">
+  <h2>Change Firewall</h2>
+  <p class="lead">AI agents are getting write access to warehouses. Every change an agent proposes is tested on a zero-copy clone first. LeakHunter attacks the clone, and the change is merged only if nothing leaks. Below: four real submissions, recorded from Snowflake.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0" id="fwTabs"></div>
+  <div class="grid g2">
+    <div class="card"><div class="mute small" id="fwAsk"></div><pre id="fwSql" style="margin:8px 0 12px"></pre><button class="act" id="fwRun">Submit to the firewall</button> <button class="ghost" id="fwNext" style="display:none">Agent rewrites it</button></div>
+    <div class="card"><div class="pipe" id="pipe"></div></div>
+  </div>
+  <div id="fwVerdict"></div>
+  <h3 style="margin-top:26px">Audit trail <span class="mute small">(RESULTS.CHANGE_AUDIT, newest first)</span></h3>
+  <div class="card" style="padding:6px 8px"><table id="auditT"></table></div>
+</section>
+
+<!-- ============ BOUNCER ============ -->
+<section id="bouncer">
+  <h2>Bouncer</h2>
+  <p class="lead">AI assistants sometimes recommend packages that do not exist. Attackers register those names and wait. Bouncer checks every package at the door, before anything is installed. Type any name: this page asks PyPI directly, with the same rules as <code>skills/bouncer</code>.</p>
+  <div class="card" style="margin-top:14px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><input type="text" id="pk" placeholder="package name, e.g. requests, reqeusts, my-invented-pkg" style="flex:1;min-width:220px"><button class="act" id="pkGo">Check at the door</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px" id="pkChips"></div>
+    <div id="pkOut" style="margin-top:14px"></div>
+  </div>
+  <h3 style="margin-top:26px">Recorded checks <span class="mute small">(RESULTS.BOUNCER_LOG)</span></h3>
+  <div class="card" style="padding:6px 8px"><table id="pkT"></table></div>
+</section>
+
+<!-- ============ ARCHITECTURE ============ -->
+<section id="arch">
+  <h2>How it fits together</h2>
+  <p class="lead">Hover a part. Everything reads and writes through one shared results schema, so the scoreboard, report and firewall all tell the same story.</p>
+  <div class="grid g2" style="margin-top:14px;grid-template-columns:2fr 1fr">
+    <div class="card svgbox" id="svg"></div>
+    <div class="card" id="archInfo"></div>
+  </div>
+  <div class="grid g3" style="margin-top:14px" id="tables"></div>
+</section>
+
+<!-- ============ TEAM ============ -->
+<section id="team">
+  <h2>Team, run it, and the honest limits</h2>
+  <div class="grid g3" style="margin-top:14px" id="people"></div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h3>Run it</h3><div class="copy"><pre id="cmds"></pre><button class="ghost small" id="cp">copy</button></div></div>
+    <div class="card"><h3>What we will not claim</h3><ul class="tight">
+      <li>A PASS means <b>not breakable by these attacks</b>, not provably safe.</li>
+      <li>In the demo the <code>pii-guardian</code> skill makes CoCo use the gate. Real enforcement needs a Snowflake-side hook.</li>
+      <li>Account-wide changes (role grants) cannot be tested on a clone, so they always go to a human.</li>
+      <li>Differencing attacks are not built yet.</li>
+      <li>Bouncer catches invented, look-alike, new and vulnerable packages, not a hijacked, long-trusted one.</li>
+      <li>All data is synthetic. Fake SSNs start with 9.</li></ul></div>
+  </div>
+</section>
+</main>
+<footer><div class="wrap">LeakHunter · MIT · built at sunhacks Hack Day by Reya Attri, Manav and Manas · all data is synthetic · dashboard generated <span id="gen"></span> from the live warehouse</div></footer>
+
+<script>
+const D = /*__DATA__*/null;
+const $ = (s, r=document) => r.querySelector(s), $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const POPULAR = D.popular || [];
+
+/* ---------- tabs ---------- */
+const TABS = [['overview','Overview'],['loop','The loop'],['lab','Re-ID lab'],['firewall','Change Firewall'],['bouncer','Bouncer'],['arch','Architecture'],['team','Team']];
+$('#nav').innerHTML = TABS.map(([id,l]) => `<button data-t="${id}">${l}</button>`).join('');
+function show(id){ $$('section').forEach(s => s.classList.toggle('on', s.id===id)); $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.t===id)); location.hash = id; window.scrollTo({top:0}); }
+$('#nav').onclick = e => e.target.dataset.t && show(e.target.dataset.t);
+$('#stamp').textContent = 'live data · ' + D.generated_at; $('#gen').textContent = D.generated_at;
+
+/* ---------- overview ---------- */
+const latest = D.rounds[D.rounds.length-1] || {};
+const leaksNow = D.attacks.filter(a => a.succeeded).length;
+const pkgBlocked = D.bouncer.filter(b => b.verdict==='BLOCK').length;
+const statDefs = [
+  [leaksNow, 'leaks proven in round '+(D.latest_round||'–'), 'red'],
+  [D.attacks.length, 'attacks tried (library + generated)', ''],
+  [D.legit.filter(l=>l.passed).length + '/' + D.legit.length, 'legitimate queries still working', 'green'],
+  [D.firewall_blocked + '/' + D.firewall_total, 'agent changes blocked by the firewall', 'amber'],
+  [pkgBlocked + '/' + D.bouncer.length, 'packages blocked by Bouncer', 'amber'],
+  [D.patients.length, 'synthetic patients in the warehouse', 'teal']];
+$('#stats').innerHTML = statDefs.map(([n,l,c]) => `<div class="card stat"><div class="n ${c}" data-n="${n}">${n}</div><div class="l">${l}</div></div>`).join('');
+$$('#stats .n').forEach(el => { const t = String(el.dataset.n); if(/^\d+$/.test(t)){ let v=0, end=+t, st=Math.max(1,Math.ceil(end/40)); const id=setInterval(()=>{v=Math.min(end,v+st); el.textContent=v; if(v>=end)clearInterval(id)},25);} });
+$('#statnote').textContent = 'Numbers come straight from the LEAKHUNTER warehouse (RESULTS schema), built ' + D.generated_at + '.';
+const FEATS = [
+ ['🎯','Attack engine','Seven library attacks plus Gemma-written ones run as a low-privilege role. A failed query never counts as a leak.','loop'],
+ ['🛠️','Defender','CoCo with the open pii-guardian skill applies masking, revokes and drops, one fix per root cause.','loop'],
+ ['⚖️','Referee','Re-runs every attack and ten legitimate analyst queries. Leaks down, work still up.','loop'],
+ ['🔬','Re-ID lab','Slide ZIP, birth date and k and watch real patients stop being unique.','lab'],
+ ['🧱','Change Firewall','Agent changes are cloned, attacked and merged only if clean. Every attempt is audited.','firewall'],
+ ['🚪','Bouncer','Stops invented, look-alike and risky packages before an AI installs them. Live PyPI checks.','bouncer']];
+$('#features').innerHTML = FEATS.map(f => `<div class="card feat" data-go="${f[3]}"><div class="ic">${f[0]}</div><h3>${f[1]}</h3><p>${f[2]}</p></div>`).join('');
+$('#features').onclick = e => { const c = e.target.closest('[data-go]'); c && show(c.dataset.go); };
+
+/* ---------- the loop ---------- */
+const FIXMAP = {
+  A01:{id:'L1', title:'Mask SSN at the base column', type:'masking', sql:'ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN SSN SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_SSN;', rule:'HIPAA Privacy Rule (minimum necessary)', col:'SSN', mask:v=>'***-**-'+String(v).slice(-4)},
+  A02:{id:'L2', title:'Mask names, keep salary for averages', type:'masking', sql:'ALTER TABLE LEAKHUNTER.DATA.EMPLOYEES MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;', rule:'GDPR Art. 5(1)(f)', col:'FULL_NAME', mask:()=>'REDACTED'},
+  A03:{id:'L3', title:'Generalize ZIP and birth date', type:'masking', sql:'ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN ZIP SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_ZIP;\nALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN DOB SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_DOB;', rule:'HIPAA de-identification standard', col:'ZIP', mask:v=>String(v).slice(0,3)+'00'},
+  A04:{id:'L4', title:'Revoke the over-broad role', type:'revoke', sql:'REVOKE ROLE LH_HR FROM ROLE LH_ANALYST;', rule:'GDPR Art. 32 · least privilege', col:'MANAGER_NOTES', mask:()=>'(no access)'},
+  A05:{id:'L5', title:'Cut access to the forgotten export', type:'revoke', sql:'REVOKE USAGE ON SCHEMA LEAKHUNTER.SCRATCH FROM ROLE LH_ANALYST;', rule:'GDPR Art. 32 · least privilege', col:'SSN', mask:()=>'(no access)'},
+  A06:{id:'L6', title:'Mask patient names in the joined view', type:'masking', sql:'ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;', rule:'HIPAA Privacy Rule (minimum necessary)', col:'FULL_NAME', mask:()=>'REDACTED'}};
+const STEPS = [['1 · Setup','A synthetic hospital + HR warehouse with six planted leaks'],['2 · Attack','Fire every attack as LH_ANALYST'],['3 · Fix','Apply Snowflake-native fixes, one by one'],['4 · Re-check','Same attacks, same legit queries'],['5 · Report','Plain-English audit, each leak tagged to its rule']];
+let step = 0, applied = new Set(), fired = true;
+const L2A = Object.fromEntries(Object.entries(FIXMAP).map(([k,f]) => [f.id, k])); // leak id -> fixing attack id
+const fixFor = a => FIXMAP[a.attack_id] ? a.attack_id : L2A[a.targets_leak];            // generated attacks share their leak's fix
+function atkState(a){ // simulated state once fixes are toggled
+  if(!a.succeeded) return a.error ? 'err' : 'safe';
+  const k = fixFor(a);
+  if(!k) return applied.has('A01') && applied.has('A05') ? 'safe' : 'leak';              // the sweep: needs both SSN fixes
+  return applied.has(k) ? 'safe' : 'leak';
+}
+function leakCount(){ return D.attacks.filter(a => atkState(a)==='leak').length; }
+function renderSteps(){ $('#steps').innerHTML = STEPS.map((s,i) => `<div class="step ${i===step?'on':''} ${i<step?'done':''}" data-i="${i}"><b>${s[0]}</b>${s[1]}</div>`).join(''); }
+function attackCards(){ return D.attacks.map(a => { const st = atkState(a); const label = {leak:'LEAK',safe:'BLOCKED',err:'COULD NOT RUN'}[st]; const cls = {leak:'red',safe:'green',err:'amber'}[st];
+  const ev = st==='leak' ? (a.evidence||'') : st==='err' ? (a.error||'').split('\n')[0].slice(0,110) : (a.error ? a.error.split('\n')[0].slice(0,110) : (applied.has(fixFor(a)) && FIXMAP[fixFor(a)] ? 'now returns: '+FIXMAP[fixFor(a)].mask((a.evidence||'').match(/\d{3}-\d{2}-\d{4}|\d{5}/)?.[0]||'x') : 'nothing readable'));
+  return `<div class="atk ${st}"><div class="id">${esc(a.attack_id)}</div><div class="meta"><div><b>${esc(a.goal)}</b> <span class="chip grey">${esc(a.technique)}</span></div><div class="ev">${esc(ev)}</div></div><span class="chip ${cls}">${label}</span></div>`; }).join(''); }
+function renderLoop(){
+  renderSteps();
+  const L = leakCount(); $('#bigLeaks').textContent = L; $('#bigLeaks').className = 'big ' + (L? 'red':'green');
+  $('#bigLegit').textContent = D.legit.filter(l=>l.passed).length + '/' + D.legit.length;
+  const m = $('#loopMain'), s = $('#loopSide');
+  if(step===0){
+    m.innerHTML = `<h3>Setup</h3><p class="mute">Synthetic data only. Fake SSNs start with 9, which are never issued. Six leaks are planted, each a realistic mistake:</p>` +
+      Object.entries(FIXMAP).map(([k,f]) => `<div class="toggle" style="cursor:default"><span class="chip blue">${f.id}</span><span>${esc(D.attacks.find(a=>a.attack_id===k)?.goal || k)}</span></div>`).join('');
+    s.innerHTML = `<h3>In the warehouse</h3><table>` + D.tables.map(t=>`<tr><td><code>${esc(t.name)}</code></td><td style="text-align:right">${t.n}</td></tr>`).join('') + `</table>`;
+  } else if(step===1){
+    m.innerHTML = `<h3>Attack <button class="act" id="fire" style="float:right;padding:6px 14px">Fire again</button></h3><div id="atkList">${attackCards()}</div><p class="small mute">Real results from round ${D.latest_round}. A03 needs the public ZIP table; a query that errors is never counted as a leak.</p>`;
+    $('#fire').onclick = async () => { const l = $('#atkList'); l.innerHTML=''; for(const a of D.attacks){ l.insertAdjacentHTML('beforeend', attackCards().split('<div class="atk').filter(Boolean).map(x=>'<div class="atk'+x).find(x=>x.includes('>'+a.attack_id+'<'))); await sleep(260);} };
+    s.innerHTML = `<h3>Why this counts</h3><ul class="tight"><li>Runs as <code>LH_ANALYST</code> with secondary roles off.</li><li>Each attack has a success rule (regex, non-empty, minimum value).</li><li>Errors and masked values are not leaks.</li></ul>`;
+  } else if(step===2){
+    m.innerHTML = `<h3>Fix <span class="mute small">(tick a fix, watch the number)</span></h3>` + Object.entries(FIXMAP).map(([k,f]) =>
+      `<label class="toggle"><input type="checkbox" data-fix="${k}" ${applied.has(k)?'checked':''}><span><b>${f.id} · ${esc(f.title)}</b><br><span class="mute small">${esc(f.rule)}</span></span></label>`).join('') +
+      `<div style="display:flex;gap:8px;margin-top:8px"><button class="ghost" id="all">Apply all</button><button class="ghost" id="none">Undo all</button></div><p class="small mute">An illustration of the fix map in <code>docs/CONTRACTS.md</code>. The real fixes are applied by CoCo / <code>defender/apply_fixes.py</code> and logged to <code>RESULTS.FIXES</code>.</p>`;
+    s.innerHTML = `<h3>Latest fix SQL</h3><pre id="fixSql">${esc([...applied].map(k=>FIXMAP[k].sql).join('\n') || '-- tick a fix')}</pre><h3 style="margin-top:12px">Attack results now</h3>${attackCards()}`;
+    $$('[data-fix]').forEach(c => c.onchange = () => { c.checked ? applied.add(c.dataset.fix) : applied.delete(c.dataset.fix); renderLoop(); });
+    $('#all').onclick = () => { Object.keys(FIXMAP).forEach(k=>applied.add(k)); renderLoop(); }; $('#none').onclick = () => { applied.clear(); renderLoop(); };
+  } else if(step===3){
+    m.innerHTML = `<h3>Re-check</h3><div class="grid g2"><div><div class="mute small">Round ${D.latest_round} (before)</div><div class="big red" style="font-size:54px">${leaksNow}</div></div><div><div class="mute small">After fixes (illustration)</div><div class="big ${L?'red':'green'}" style="font-size:54px">${L}</div></div></div>` +
+      `<h3 style="margin-top:14px">Legitimate queries (real, run as LH_ANALYST)</h3>` + D.legit.map(q=>`<div class="toggle" style="cursor:default"><span class="chip ${q.passed?'green':'red'}">${q.passed?'PASS':'FAIL'}</span><span><b>${esc(q.query_id)}</b> ${esc(q.description)}</span></div>`).join('') +
+      `<p class="small mute">They only use aggregates (LEFT(ZIP,3), YEAR(DOB), AVG(SALARY)), so masking the identifiers never breaks them.</p>`;
+    s.innerHTML = `<h3>Round history</h3>` + D.rounds.map(r=>`<div class="row"><span>Round ${r.round_no}</span><div class="bar2"><span style="width:${(r.leaks||0)/Math.max(1,r.attacks)*100}%;background:var(--red)"></span></div><b>${r.leaks||0} leaks</b></div>`).join('') + `<div class="row"><span>After fixes</span><div class="bar2"><span style="width:${L/Math.max(1,D.attacks.length)*100}%;background:var(--green)"></span></div><b>${L} leaks</b></div>`;
+  } else {
+    m.innerHTML = `<h3>Report</h3><p class="mute">Each leak, what it exposed, the rule it breaks, the fix and the re-check, in plain English: <code>python -m report.generate</code>.</p>` + Object.entries(FIXMAP).map(([k,f]) => `<div class="find" style="border-color:var(--teal)"><b>${f.id} · ${esc(f.title)}</b><div class="mute small">Rule: ${esc(f.rule)}</div></div>`).join('') + `<p class="small mute">Regulation tags are pointers for discussion, not legal advice.</p>`;
+    s.innerHTML = `<h3>Fix SQL</h3><pre>${esc(Object.values(FIXMAP).map(f=>f.sql).join('\n'))}</pre>`;
+  }
+}
+$('#steps').onclick = e => { const s = e.target.closest('.step'); if(s){ step=+s.dataset.i; renderLoop(); } };
+
+/* ---------- re-identification lab ---------- */
+const P = D.patients; $('#labN').textContent = P.length.toLocaleString();
+const ZIPN = ['no ZIP','1 digit','2 digits','3 digits','4 digits','full 5-digit ZIP'], DOBN = ['no birth date','decade','year','year + month','full date'];
+function labCompute(){
+  const zn = +$('#zip').value, dn = +$('#dob').value, sx = $('#sex').checked, k = +$('#k').value, supp = $('#supp').checked;
+  $('#zipV').textContent = ZIPN[zn]; $('#dobV').textContent = DOBN[dn]; $('#kV').textContent = k;
+  const g = new Map();
+  for(const [z,d,s] of P){ const y=+d.slice(0,4); const key=[zn? z.slice(0,zn):'', dn===4? d : dn===3? d.slice(0,7) : dn===2? y : dn===1? Math.floor(y/10)*10 : '', sx? s:''].join('|'); g.set(key,(g.get(key)||0)+1); }
+  let atRisk = 0, hidden = 0, uniq = 0, small = Infinity; const buckets = [['1 (unique)',0],['2–4',0],['5–9',0],['10–24',0],['25+',0]];
+  for(const n of g.values()){ if(n<k){ if(supp) hidden += n; else atRisk += n; } if(n===1) uniq++; small = Math.min(small,n);
+    if(!(supp && n<k)) buckets[n===1?0:n<5?1:n<10?2:n<25?3:4][1] += n; }
+  const pct = atRisk / P.length * 100;
+  $('#risk').textContent = pct.toFixed(pct<10 && pct>0 ? 1 : 0) + '%'; $('#risk').className = 'big ' + (atRisk? 'red':'green');
+  $('#labVerdict').innerHTML = atRisk ? `<span class="chip red" style="font-size:18px;padding:6px 16px">BLOCK</span>` : `<span class="chip green" style="font-size:18px;padding:6px 16px">PASS</span>`;
+  $('#labDetail').textContent = supp ? `${hidden.toLocaleString()} patients (${(hidden/P.length*100).toFixed(1)}%) sit in groups smaller than ${k} and are dropped from the view; everyone left hides in a group of ${k}+. The price of safety is lost detail.` : `${g.size.toLocaleString()} distinct combinations · ${uniq.toLocaleString()} patients are completely unique · smallest group: ${small}`;
+  $('#hist').innerHTML = buckets.map(([l,n]) => `<div class="row"><span class="small">${l}</span><div class="bar2"><span style="width:${n/P.length*100}%;background:${l.startsWith('1 ')||l==='2–4'?'var(--red)':'var(--teal)'}"></span></div><span class="small">${n}</span></div>`).join('') + `<div class="small mute">patients by size of the group they hide in</div>`;
+}
+const PRESETS = {raw:[5,4,true,5,false], fw:[3,1,true,5,true], mask:[3,2,true,5,false]};
+$('#lab').onclick = e => { const p = e.target.dataset.p; if(p){ const [z,d,s,k,u] = PRESETS[p]; $('#zip').value=z; $('#dob').value=d; $('#sex').checked=s; $('#k').value=k; $('#supp').checked=u; labCompute(); $$('#lab [data-p]').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); } };
+['zip','dob','sex','k','supp'].forEach(i => $('#'+i).oninput = () => { $$('#lab [data-p]').forEach(b=>b.classList.remove('on')); labCompute(); });
+
+/* ---------- change firewall ---------- */
+const CASES = [
+ {key:'bad_view', tab:'Leaky view', ask:'Agent request: "Build an analytics view of patients by ZIP and birth date."', secs:14, stop:null},
+ {key:'good_view', tab:'Safe rewrite', ask:'The agent reads the BLOCK, generalizes ZIP and birth date, resubmits.', secs:13, stop:null},
+ {key:'bad_package', tab:'Bad package', ask:'Agent request: a scoring function that needs a package.', secs:4, stop:0},
+ {key:'role_grant', tab:'Role grant', ask:'Agent request: "Give the analyst team HR access, just temporarily."', secs:4, stop:1}];
+// measured on the demo warehouse (firewall step timings); '' = overlapped with the step before
+const STEPT = {full:['<0.1s','<0.1s','~9.5s','(overlapped)','~1.2s','~2.5s','~1s'], bad_package:['~0.4s'], role_grant:['<0.1s','<0.1s']};
+const PIPE = ['Package Guard + Bouncer','Static check','Clone the schema (zero-copy) + canary patient','Baseline attacks on production','Apply the change to the clone only','Attack as LH_ANALYST + probe the new object','Verdict'];
+let fwCase = 0, fwBusy = false;
+function fwRender(){
+  const c = CASES[fwCase], r = D.firewall_cases[c.key];
+  $('#fwTabs').innerHTML = CASES.map((x,i)=>`<button class="ghost ${i===fwCase?'on':''}" data-i="${i}">${x.tab} ${D.firewall_cases[x.key]?`<span class="chip ${D.firewall_cases[x.key].verdict==='PASS'?'green':'red'}">${D.firewall_cases[x.key].verdict}</span>`:''}</button>`).join('');
+  $('#fwAsk').textContent = c.ask; $('#fwSql').textContent = r ? r.sql.trim() : '(no recorded run yet: python demo/run_demo.py agent)';
+  $('#pipe').innerHTML = PIPE.map((p,i)=>`<div class="ps" id="ps${i}"><div class="dot">${i+1}</div><div>${p}</div><div class="small mute" id="pt${i}"></div></div>`).join(''); $('#fwVerdict').innerHTML = '';
+  $('#fwRun').disabled = !r; $('#fwNext').style.display = (c.key==='bad_view' && r) ? '' : 'none';
+}
+async function fwRun(){
+  if(fwBusy) return; fwBusy = true; fwRender(); $('#fwRun').disabled = true;
+  const c = CASES[fwCase], r = D.firewall_cases[c.key], last = c.stop===null ? 6 : c.stop, tm = STEPT[c.stop===null ? 'full' : c.key];
+  for(let i=0;i<=6;i++){ const el = $('#ps'+i);
+    if(i>last){ el.classList.add('skip'); $('#pt'+i).textContent='never ran'; continue; }
+    el.classList.add('run'); await sleep(420 + (i===2?500:0)); el.classList.remove('run');
+    const failedHere = i===last && c.stop!==null || (i===6 && r.verdict==='BLOCK');
+    el.classList.add(failedHere ? 'bad' : 'ok'); $('#ps'+i+' .dot').textContent = failedHere ? '✕' : '✓'; $('#pt'+i).textContent = tm[i] || '';
+  }
+  fwVerdict(r, c); fwBusy = false; $('#fwRun').disabled = false;
+}
+function fwVerdict(r, c){
+  const blocked = r.verdict==='BLOCK';
+  let h = `<div class="verdict ${blocked?'block':'pass'}"><div class="v ${blocked?'red':'green'}">${blocked?'BLOCKED':'PASSED'} <span class="mute small" style="font-weight:400">· ~${c.secs}s, real run${r.merged?', merged':''}</span></div>`;
+  if(blocked){
+    h += r.findings.map(f => `<div class="find"><b>${esc(f.kind)}</b>: ${esc(f.detail)}${f.evidence?`<div class="ev">evidence: ${esc(f.evidence)}</div>`:''}<div class="small teal">fix → ${esc(f.fix)}</div></div>`).join('');
+    if(c.key==='bad_package'){ const b = D.bouncer.find(x=>x.package==='pandsa'); h += `<div class="small mute">Nothing was cloned and the attacker session was never opened.${b?` Bouncer asked PyPI: <b>${esc(b.verdict)}</b>: ${esc(b.reasons)}`:''}</div>`; }
+    if(c.stop!==null && c.key==='role_grant') h += `<div class="small mute">Role grants are account-wide: they cannot be rehearsed on a clone, so a human must approve them. Nothing was cloned.</div>`;
+    if(c.key==='bad_view') h += `<div class="small mute" style="margin-top:8px">Machine-readable feedback goes back to CoCo, which rewrites the view. → try "Agent rewrites it".</div>`;
+  } else {
+    h += `<p class="mute" style="margin:8px 0 0">${r.attacks_run} attacks and probes found nothing new. With <code>--merge</code> the change is applied to production and the attempt is saved in the audit trail.</p>`;
+  }
+  if(r.preexisting && r.preexisting.length) h += `<div class="small mute" style="margin-top:8px">Leaks that already existed before this change (not blamed on it): ${r.preexisting.join(', ')}</div>`;
+  $('#fwVerdict').innerHTML = h + '</div>';
+}
+$('#fwTabs').onclick = e => { const b = e.target.closest('[data-i]'); if(b && !fwBusy){ fwCase = +b.dataset.i; fwRender(); } };
+$('#fwRun').onclick = fwRun; $('#fwNext').onclick = () => { fwCase = 1; fwRender(); fwRun(); };
+$('#auditT').innerHTML = '<tr><th>Verdict</th><th>Submitted by</th><th>Change</th><th>Attacks</th></tr>' + (Object.values(D.firewall_cases).length ? Object.entries(D.firewall_cases).map(([k,r])=>`<tr><td><span class="chip ${r.verdict==='PASS'?'green':'red'}">${r.verdict}${r.merged?' · MERGED':''}</span></td><td>coco</td><td><code>${esc((r.sql||'').trim().split('\n').find(l=>!l.startsWith('--'))?.slice(0,70)||k)}</code></td><td>${r.attacks_run}</td></tr>`).join('') : '<tr><td colspan=4 class="mute">no runs yet</td></tr>');
+
+/* ---------- bouncer ---------- */
+function dist(a,b){ let p=[...Array(b.length+1).keys()]; for(let i=1;i<=a.length;i++){ const c=[i]; for(let j=1;j<=b.length;j++) c.push(Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]!==b[j-1]))); p=c; } return p[b.length]; }
+const norm = n => n.trim().toLowerCase().replace(/[-_.]+/g,'-');
+async function bouncerCheck(raw){
+  const name = norm(raw), reasons = []; let verdict = 'ALLOW';
+  for(const pop of POPULAR) if(name!==pop && dist(name,pop) <= (pop.length<=5?1:2)){ reasons.push(`name is one or two letters away from popular package '${pop}' (possible typosquat)`); verdict='WARN'; break; }
+  let data = null;
+  try{ const r = await fetch(`https://pypi.org/pypi/${encodeURIComponent(name)}/json`); if(r.status===404) return {name, verdict:'BLOCK', source:'live PyPI', reasons:['does not exist on PyPI: likely invented by the AI; an attacker could register this name', ...reasons]}; if(!r.ok) throw 0; data = await r.json(); }
+  catch(e){ const rec = D.bouncer.find(b=>b.package===name); return rec ? {name, verdict:rec.verdict, source:'recorded (offline)', reasons:String(rec.reasons).split('; ')} : {name, verdict:'WARN', source:'offline', reasons:['could not reach PyPI: human review needed (Bouncer fails closed)', ...reasons]}; }
+  const rel = Object.entries(data.releases||{}).filter(([v,f])=>f.length), times = Object.values(data.releases||{}).flat().map(f=>Date.parse(f.upload_time_iso_8601)).filter(Boolean);
+  if(times.length){ const age = (Date.now()-Math.min(...times))/864e5|0; if(age<30){ reasons.push(`first published only ${age} days ago`); verdict='WARN'; } else if(age<90 && rel.length<=1){ reasons.push(`young package (${age} days) with a single release`); verdict='WARN'; } } else { reasons.push('no uploaded files in any release'); verdict='WARN'; }
+  if((data.vulnerabilities||[]).length){ reasons.push('latest version has known vulnerabilities: '+data.vulnerabilities.slice(0,3).map(v=>v.id).join(', ')); verdict='WARN'; }
+  const urls = Object.values(data.info.project_urls||{}); if(!urls.some(u=>/github\.com|gitlab\.com/.test(u||''))) reasons.push('no linked source repository (cannot review maintainers)');
+  if(!reasons.length) reasons.push(`established package (${rel.length} releases)`);
+  return {name, verdict, source:'live PyPI', reasons};
+}
+function pkCard(r){ const c = {ALLOW:'green',WARN:'amber',BLOCK:'red'}[r.verdict]; return `<div class="verdict ${r.verdict==='BLOCK'?'block':r.verdict==='ALLOW'?'pass':''}" style="${r.verdict==='WARN'?'background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.5)':''}"><div class="v ${c}">${r.verdict} <span class="mute small" style="font-weight:400">· ${esc(r.name)} · ${r.source}</span></div>${r.reasons.map(x=>`<div class="find" style="border-color:var(--${c})">${esc(x)}</div>`).join('')}<div class="small mute">${r.verdict==='ALLOW'?'The agent may install it.':r.verdict==='WARN'?'Do not install yet: ask a human to confirm.':'Never install. Suggest a well-known alternative and check that too.'}</div></div>`; }
+async function pkGo(n){ n = (n||$('#pk').value).trim(); if(!n) return; $('#pk').value = n; $('#pkOut').innerHTML = '<span class="mute">asking PyPI…</span>'; $('#pkOut').innerHTML = pkCard(await bouncerCheck(n)); }
+$('#pkGo').onclick = () => pkGo(); $('#pk').onkeydown = e => e.key==='Enter' && pkGo();
+$('#pkChips').innerHTML = ['requests','reqeusts','pandas','snowflake-pdf-exporter','reportlab','zz-fake-pkg-qq91'].map(n=>`<button class="ghost small" data-n="${n}">${n}</button>`).join('');
+$('#pkChips').onclick = e => e.target.dataset.n && pkGo(e.target.dataset.n);
+$('#pkT').innerHTML = '<tr><th>Package</th><th>Verdict</th><th>Why</th><th>Asked by</th></tr>' + D.bouncer.map(b=>`<tr><td><code>${esc(b.package)}</code></td><td><span class="chip ${{ALLOW:'green',WARN:'amber',BLOCK:'red'}[b.verdict]}">${b.verdict}</span></td><td class="small">${esc(String(b.reasons).split('; ')[0])}</td><td class="mute small">${esc(b.requested_by)}</td></tr>`).join('');
+
+/* ---------- architecture ---------- */
+const NODES = {
+ wh:{x:380,y:160,w:200,h:86,t:'Snowflake warehouse',s:'DATA · SCRATCH · GOVERNANCE · RESULTS',d:'Synthetic hospital + HR data next to free public census data. Masking and row-access policies need Enterprise edition. Everything is written through leakhunter/db.py.'},
+ att:{x:40,y:40,w:200,h:80,t:'Attacker',s:'Gemma via Ollama + library',d:'Seven hand-written attacks and Gemma-generated ones run as LH_ANALYST with secondary roles off. Errors and masked values never count as leaks.'},
+ def:{x:720,y:40,w:200,h:80,t:'Defender',s:'CoCo + pii-guardian skill',d:'Reads the leak log and applies the smallest Snowflake-native fix: masking, revoke or drop. Every fix is logged. Open Agent Skill standard.'},
+ ref:{x:40,y:280,w:200,h:80,t:'Referee',s:'attacks + 10 legit queries',d:'Re-runs everything each round. Proves the leaks closed and that legitimate work still passes.'},
+ fw:{x:380,y:320,w:200,h:80,t:'Change Firewall',s:'clone · attack · merge',d:'Agent changes go to a zero-copy clone first. Attacked as the analyst. Merged only on PASS. Audited in CHANGE_AUDIT.'},
+ bo:{x:720,y:280,w:200,h:80,t:'Bouncer',s:'PyPI package vetting',d:'Blocks invented, look-alike, brand-new and vulnerable packages before an AI agent installs them. Also runs inside the firewall.'},
+ sb:{x:380,y:20,w:200,h:70,t:'Scoreboard',s:'Streamlit · 5 s refresh',d:'Leaks, legit queries, round history, Rejected panel, Bouncer panel and Change Firewall panel. Readable from two meters.'}};
+const EDGES = [['att','wh'],['def','wh'],['ref','wh'],['fw','wh'],['sb','wh'],['bo','fw'],['ref','att'],['def','fw']];
+function drawArch(){
+  const c = n => [NODES[n].x+NODES[n].w/2, NODES[n].y+NODES[n].h/2];
+  $('#svg').innerHTML = `<svg viewBox="0 0 960 430">${EDGES.map(([a,b])=>`<path class="edge" data-e="${a} ${b}" d="M${c(a)} L${c(b)}"/>`).join('')}${Object.entries(NODES).map(([k,n])=>`<g class="node" data-k="${k}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="14"/><text x="${n.x+n.w/2}" y="${n.y+n.h/2-4}" text-anchor="middle">${n.t}</text><text class="sub" x="${n.x+n.w/2}" y="${n.y+n.h/2+16}" text-anchor="middle">${n.s}</text></g>`).join('')}</svg>`;
+  const info = k => { $$('.node').forEach(n=>n.classList.toggle('on', n.dataset.k===k)); $$('.edge').forEach(e=>e.classList.toggle('hot', e.dataset.e.split(' ').includes(k))); $('#archInfo').innerHTML = `<h3>${NODES[k].t}</h3><p class="mute">${NODES[k].d}</p>`; };
+  $$('.node').forEach(n => n.onmouseenter = n.onclick = () => info(n.dataset.k)); info('wh');
+  $('#tables').innerHTML = [['RESULTS.ATTACK_RUNS','every attack, its SQL, evidence and error'],['RESULTS.LEGIT_RUNS','legitimate query pass/fail'],['RESULTS.FIXES','each fix, SQL applied, by whom'],['RESULTS.BOUNCER_LOG','every package verdict'],['RESULTS.CHANGE_AUDIT','every agent change: BLOCK or MERGED'],['RESULTS.SCOREBOARD','view: leaks and legit per round']].map(([t,d])=>`<div class="card"><code class="teal">${t}</code><div class="small mute" style="margin-top:4px">${d}</div></div>`).join('');
+}
+
+/* ---------- team ---------- */
+$('#people').innerHTML = [
+ ['R','Reya Attri','var(--teal)',['Bouncer: PyPI package vetting skill, logging, demo','Change Firewall + Package Guard (clone, attack, merge, audit)','Streamlit scoreboard: Rejected, Bouncer, Change Firewall panels','Demo runner, doctor, this dashboard, docs and submission']],
+ ['M','Manav','var(--violet)',['Snowflake foundation, synthetic data, planted leaks','Defender: pii-guardian skill + CoCo fixes','Audit report generator','Public-data join and repo']],
+ ['N','Manas','var(--amber)',['Attack library + Gemma attacker','Referee engine and rounds','Legitimate analyst queries','Re-identification attack (A03)']]].map(([a,n,c,l])=>`<div class="card"><div class="person"><div class="av" style="background:${c}">${a}</div><div><h3>${n}</h3><ul class="tight">${l.map(x=>`<li>${x}</li>`).join('')}</ul></div></div></div>`).join('');
+$('#cmds').textContent = `python demo/run_demo.py doctor       # preflight\npython demo/run_demo.py agent        # Bouncer, then firewall BLOCK, then PASS\npython demo/run_demo.py round        # one referee round\npython demo/run_demo.py scoreboard   # live Streamlit scoreboard\npython demo/build_showcase.py        # rebuild this dashboard from live data\npython -m firewall.selftest          # offline proof, no Snowflake needed`;
+$('#cp').onclick = () => navigator.clipboard?.writeText($('#cmds').textContent).then(()=>{ $('#cp').textContent='copied'; setTimeout(()=>$('#cp').textContent='copy',1200); });
+
+/* ---------- init ---------- */
+renderLoop(); labCompute(); fwRender(); drawArch();
+show((location.hash||'#overview').slice(1).replace(/[^a-z]/g,'') && TABS.some(t=>t[0]===location.hash.slice(1)) ? location.hash.slice(1) : 'overview');
+</script>
+</body>
+</html>

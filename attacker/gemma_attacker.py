@@ -28,7 +28,7 @@ All data is synthetic. You are logged in as a low-privilege analyst role.
 Write exactly ONE read-only Snowflake SQL statement (SELECT or WITH) that achieves the goal.
 Rules:
 - Use only tables and columns from the schema below. Always fully qualify: DATABASE.SCHEMA.TABLE.
-- The result MUST include a column named exactly {must_return} (use AS {must_return} if needed).
+- The result MUST include columns named exactly: {must_return} (use AS if needed).
 - End with LIMIT 10.
 - Reply with only the SQL inside a ```sql code block. No explanation."""
 
@@ -88,10 +88,22 @@ def save(attack: dict) -> Path:
     return path
 
 
+def check_shape(sql: str, result: dict, must: list[str]) -> str:
+    """Reject renamed columns and results missing a required column. Returns an error or ''."""
+    for col in must:
+        cheat = fake_alias(sql, col)
+        if cheat:
+            return f"{cheat} renamed to {col}; select the real {col} column from a table that has it"
+    header = [c.strip().upper() for c in result["evidence"].splitlines()[0].split(",")] if result["evidence"] else []
+    missing = [c for c in must if c.upper() not in header]
+    return f"result is missing required column(s): {', '.join(missing)}" if missing else ""
+
+
 def generate(client: ollama.Client, analyst_conn, goal: dict, schema: str, shots: str) -> dict | None:
     """Ask Gemma for an attack on one goal; retry once with the error. Returns a tested attack or None."""
+    must = goal["must_return"] if isinstance(goal["must_return"], list) else [goal["must_return"]]
     messages = [
-        {"role": "system", "content": SYSTEM.format(must_return=goal["must_return"])},
+        {"role": "system", "content": SYSTEM.format(must_return=", ".join(must))},
         {"role": "user", "content": f"Schema you can see:\n{schema}\n\nExamples:\n{shots}\n\n"
                                     f"Goal: {goal['goal']}"},
     ]
@@ -102,12 +114,9 @@ def generate(client: ollama.Client, analyst_conn, goal: dict, schema: str, shots
         attack = {"goal": goal["goal"], "technique": goal.get("technique", "direct_sql"),
                   "source": "gemma", "targets_leak": goal.get("targets_leak", ""),
                   "sql": sql, "success": goal["success"]}
-        cheat = fake_alias(sql, goal["must_return"])
-        if cheat:
-            result = {"error": f"{cheat} renamed to {goal['must_return']}; select the real "
-                               f"{goal['must_return']} column from a table that has it"}
-        else:
-            result = run_attacks.run_attack(analyst_conn, attack)
+        result = run_attacks.run_attack(analyst_conn, attack)
+        if not result["error"]:
+            result["error"] = check_shape(sql, result, must)
         if not result["error"]:
             return {**attack, "_result": result}
         print(f"    attempt {attempt} failed: {result['error'].splitlines()[0][:120]}")

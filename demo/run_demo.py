@@ -6,6 +6,7 @@
                                         view, the rewrite PASSes   [--merge applies the PASS, --cleanup removes it]
   python demo/run_demo.py round         one referee round (attacks + legit queries) -> scoreboard row
   python demo/run_demo.py scoreboard    open the Streamlit scoreboard
+  python demo/run_demo.py showcase      rebuild the interactive dashboard from live data and open it
   python demo/run_demo.py all           doctor, round, agent (no merge)
   python demo/run_demo.py loop          full proof, end to end: reset, plant all leaks, round (leaks), defender
                                         fixes, round (re-check: 0 leaks, legit all pass), audit report, dashboard
@@ -158,12 +159,13 @@ def loop() -> int:
              (["-m", "defender.apply_fixes"], "DEFEND: pii-guardian playbook fixes, logged to RESULTS.FIXES"),
              (["-m", "referee.run_round"], "ROUND 2: re-check (expect 0 leaks, legit all pass)"),
              (["-m", "report.generate"], "audit report -> report/audit_report.md"),
-             (["-m", "report.dashboard"], "dashboard -> report/dashboard.html")]
+             (["-m", "report.dashboard"], "dashboard -> report/dashboard.html"),
+             (["demo/build_showcase.py"], "interactive showcase -> docs/showcase.html")]
     for cmd, title in steps:
         if run(cmd, title):
             print(f"\n  STOPPED at: {title}")
             return 1
-    print("\n  Done. Open report/dashboard.html, or: python demo/run_demo.py scoreboard")
+    print("\n  Done. Open docs/showcase.html (interactive) or report/dashboard.html (one page), or: python demo/run_demo.py scoreboard")
     return 0
 
 
@@ -184,7 +186,8 @@ def judge() -> int:
                        (["-m", "defender.apply_fixes"], "DEFEND"),
                        (["-m", "referee.run_round"], "ROUND: re-check"),
                        (["-m", "report.generate"], "audit report"),
-                       (["-m", "report.dashboard"], "dashboard")):
+                       (["-m", "report.dashboard"], "dashboard"),
+                       (["demo/build_showcase.py"], "interactive showcase")):
         if run(cmd, title):
             return 1
     return 0
@@ -192,7 +195,7 @@ def judge() -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["doctor", "agent", "round", "scoreboard", "all", "loop", "judge", "dashboard"])
+    ap.add_argument("command", choices=["doctor", "agent", "round", "scoreboard", "showcase", "all", "loop", "judge", "dashboard"])
     ap.add_argument("--merge", action="store_true", help="agent: apply the PASSed change to production")
     ap.add_argument("--cleanup", action="store_true", help="agent: with --merge, drop the demo view afterwards")
     ap.add_argument("--sample", action="store_true", help="agent: canned package list instead of live Gemma")
@@ -206,6 +209,11 @@ def main() -> int:
         return run(["-m", "referee.run_round"], "referee round")
     if args.command == "scoreboard":
         return run(["-m", "streamlit", "run", "scoreboard/app.py"], "scoreboard (Ctrl+C to stop)")
+    if args.command == "showcase":
+        import webbrowser
+        code = run(["demo/build_showcase.py"], "build dashboard")
+        webbrowser.open((ROOT / "docs" / "showcase.html").as_uri())
+        return code
     if args.command == "agent":
         return agent(args)
     if args.command == "loop":
