@@ -1,6 +1,6 @@
 # LeakHunter
 
-**Continuous leak testing for your data warehouse.** LeakHunter attacks your warehouse the way a curious insider would, fixes every leak it can prove, and then re-checks that the fixes hold without breaking anyone's legitimate work.
+**Prove your data is safe.** LeakHunter is continuous data leak assurance for Snowflake: it attacks your warehouse the way a curious insider would, fixes every leak it can prove, and then re-checks that the fixes hold without breaking anyone's legitimate work.
 
 Built at sunhacks Hack Day 2026 (MLH Hacktoberfest) · MIT licensed
 

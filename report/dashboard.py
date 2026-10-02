@@ -167,31 +167,31 @@ def build_html(d: dict) -> str:
     posture = "Protected" if board and open_now == 0 else ("At risk" if board else "Not scanned")
 
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>LeakHunter</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>LeakHunter · Data leak assurance for Snowflake</title>
 <style>
-:root{{--bg:#f6f7f9;--panel:#fff;--ink:#14161a;--muted:#646b76;--line:#e3e6eb;--brand:#3346d3;--brandbg:#eef0fd;
---green:#13804a;--greenbg:#e6f4ec;--red:#c4321f;--redbg:#fcebe8;--amber:#9a5b00;--amberbg:#fdf2dc;--side:#fbfbfc}}
-@media (prefers-color-scheme:dark){{:root{{--bg:#0f1114;--panel:#171a1f;--ink:#e8eaee;--muted:#9aa1ac;--line:#272b33;--brand:#8b98ff;--brandbg:#1d2140;
---green:#5fd39a;--greenbg:#12291d;--red:#ff8b7a;--redbg:#33170f;--amber:#f2c063;--amberbg:#33270f;--side:#13161a}}}}
+:root{{--bg:#f4f2ed;--panel:#fffdf9;--ink:#16181b;--muted:#5f6368;--line:#e2ded5;--brand:#d9480f;--brandbg:#fbe9df;
+--green:#1e7a46;--greenbg:#e3f1e7;--red:#b42318;--redbg:#fbe7e4;--amber:#8a5300;--amberbg:#f9edd6;--side:#16181b}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#111214;--panel:#191a1d;--ink:#ecebe7;--muted:#9c9c97;--line:#2a2b2f;--brand:#ff7a3d;--brandbg:#33200f;
+--green:#62cf8f;--greenbg:#14281c;--red:#ff8a78;--redbg:#36170f;--amber:#f0bd5a;--amberbg:#34270e;--side:#0c0d0e}}}}
 *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}}
 a{{color:inherit;text-decoration:none}}code,pre{{font:12.5px/1.5 ui-monospace,"Cascadia Code",Consolas,monospace}}
 .app{{display:grid;grid-template-columns:220px 1fr;min-height:100vh}}
-aside{{background:var(--side);border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh}}
+aside{{background:var(--side);color:#e9e7e1;border-right:1px solid #000;padding:18px 14px;position:sticky;top:0;height:100vh}}
 .logo{{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin:2px 6px 22px}}
-.mark{{width:26px;height:26px;border-radius:7px;background:var(--brand);display:grid;place-items:center}}
+.mark{{width:26px;height:26px;border-radius:4px;background:var(--brand);display:grid;place-items:center}}
 .mark i{{width:10px;height:10px;border:2.5px solid #fff;border-radius:50%}}
-nav a{{display:block;padding:8px 10px;border-radius:8px;color:var(--muted);font-weight:500}}nav a:hover{{background:var(--brandbg);color:var(--ink)}}
-nav a.on{{background:var(--brandbg);color:var(--brand)}}
-.side-foot{{position:absolute;bottom:18px;left:14px;right:14px;font-size:12px;color:var(--muted);padding:0 6px}}
+nav a{{display:block;padding:8px 10px;border-radius:6px;color:#a7a59f;font-weight:500;border-left:2px solid transparent}}nav a:hover{{color:#fff;background:#23252a}}
+nav a.on{{color:#fff;background:#23252a;border-left-color:var(--brand)}}
+.side-foot{{position:absolute;bottom:18px;left:14px;right:14px;font-size:12px;color:#8d8b85;padding:0 6px}}.tag{{font-size:11px;color:#8d8b85;font-weight:500;letter-spacing:.02em;margin:-16px 6px 22px}}
 header{{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 32px;border-bottom:1px solid var(--line);background:var(--panel)}}
 .ws{{display:flex;align-items:center;gap:10px;font-weight:600}}.ws .muted{{font-weight:400}}
 .live{{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--greenbg)}}
 main{{padding:28px 32px 56px;max-width:1180px}}h1{{font-size:22px;margin:0 0 4px}}h2{{font-size:15px;margin:0 0 12px}}
 .muted{{color:var(--muted)}}section{{margin-top:28px;scroll-margin-top:16px}}
-.panel{{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}}
+.panel{{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px}}
 .cards{{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px}}
 .lab{{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.05em}}
-.big{{font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:-.01em}}.big small{{font-size:16px;color:var(--muted);font-weight:500}}
+.big{{font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}}.big small{{font-size:16px;color:var(--muted);font-weight:500}}
 .status{{display:flex;align-items:center;gap:10px}}.status .big{{color:var(--green)}}.status.risk .big{{color:var(--red)}}
 .shield{{width:34px;height:34px;border-radius:10px;background:var(--greenbg);display:grid;place-items:center;color:var(--green);font-weight:800}}
 .risk .shield{{background:var(--redbg);color:var(--red)}}
@@ -214,13 +214,13 @@ table{{width:100%;border-collapse:collapse}}td,th{{padding:9px 6px;border-top:1p
 @media (max-width:900px){{.app{{grid-template-columns:1fr}}aside{{display:none}}.cards,.grid2{{grid-template-columns:1fr}}
 .f summary{{grid-template-columns:70px 1fr}}.asset,.f summary .pill{{display:none}}.fd{{padding-left:4px}}main,header{{padding-left:16px;padding-right:16px}}}}
 </style></head><body><div class="app">
-<aside><div class="logo"><span class="mark"><i></i></span>LeakHunter</div>
+<aside><div class="logo"><span class="mark"><i></i></span>LeakHunter</div><div class="tag">Prove your data is safe.</div>
 <nav><a class="on" href="#overview">Overview</a><a href="#findings">Findings</a><a href="#scans">Scan history</a><a href="#agents">Agent guard</a><a href="#integrations">Integrations</a></nav>
-<div class="side-foot">Open source · MIT<br>github.com/Manavpatel06/Leak_Hunter</div></aside>
+<div class="side-foot">Open source · MIT</div></aside>
 <div><header><div class="ws"><span class="live"></span>Snowflake <span class="muted">/ LEAKHUNTER</span></div>
 <div class="muted">Last scan {e(d.get('generated_at'))} · <span class="pill green">Scan complete</span></div></header>
 <main>
-<section id="overview" style="margin-top:0"><h1>Overview</h1><p class="muted" style="margin:0 0 18px">Continuous leak testing: attack as an insider, fix what is proven, verify nothing legitimate broke.</p>
+<section id="overview" style="margin-top:0"><h1>Overview</h1><p class="muted" style="margin:0 0 18px">Continuous data leak assurance for Snowflake: we attack your warehouse like an insider, fix what we prove, and verify nothing your analysts rely on breaks.</p>
 <div class="cards">
 <div class="panel status {'' if posture == 'Protected' else 'risk'}"><div class="shield">{'✓' if posture == 'Protected' else '!'}</div><div><div class="lab">Data posture</div><div class="big">{posture}</div>
 <div class="muted">{open_now} open leaks · {found} found and fixed · {crit} critical</div></div></div>
