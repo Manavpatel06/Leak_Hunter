@@ -1,10 +1,11 @@
 # STATUS — update your own section only (pull first). Format: [time] done / doing / blocked
 
 ## Manav
-- [ ] Enterprise trial + `sql/00_setup.sql` (sections A–E) + LH_BOT key + `.env` shared privately
+- [x] Enterprise trial + `sql/00_setup.sql` + LH_BOT key-pair auth (`python -m leakhunter.db` OK). TODO: run section E (BOUNCER_LOG) in Snowsight; DM `.env` + key
 - [ ] Public data listing + exact zip table posted in CONTRACTS §4
-- [ ] `setup/generate_data.py`, `plant_leaks.py`, `reset.py`
-- [ ] Defender: CoCo run + `defender/apply_fixes.py` fallback + pii-guardian validated
+- [x] `setup/generate_data.py`, `plant_leaks.py`, `reset.py`, `verify.py` — live: verify planted + closed both ALL GOOD; leaks currently planted (--all) for the referee
+- [x] `defender/apply_fixes.py` fallback works live; pii-guardian validated (skills-ref 0 errors)
+- [ ] Defender: CoCo run + screenshots in `docs/coco/`
 - [ ] `report/generate.py`
 
 ## Manas
