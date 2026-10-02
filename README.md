@@ -41,6 +41,10 @@ On a synthetic hospital and HR warehouse (2,000 patients, 300 employees):
 
 The re-identification attack joins our "anonymized" patient view with real US Census population data from Snowflake Marketplace. People in small towns turn out to be easy to single out. After LeakHunter generalizes ZIP codes and birth dates, the same join finds no one, and the analysts' reports still work.
 
+The attacker is not a fixed script. Gemma wrote its own attacks from plain-English goals, and four of the first five leaked before the fixes. One linked patient names to diagnoses by joining the "anonymized" view back to the patient table, a route we never wrote by hand. In our latest re-check, all 13 attacks (the library plus every Gemma-written attack) came back blocked, with all 10 legitimate queries still passing.
+
+For AI agents, the Change Firewall blocked a leaky "patients by ZIP and birth date" view in about 13 seconds (693 of 5,000 rows described fewer than 5 people) and passed the generalized rewrite in about 11 seconds.
+
 Every leak in the report is tagged with the rule it would break (for example, HIPAA's minimum-necessary standard or GDPR's security of processing). These tags are pointers for a reviewer, not legal advice.
 
 ## Run it yourself
@@ -49,15 +53,18 @@ You need Python 3.11+ and a Snowflake account with Enterprise features (a trial 
 
 ```bash
 git clone https://github.com/Manavpatel06/Leak_Hunter.git && cd Leak_Hunter
-python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate      # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
+
+Run every command below from a terminal where the venv is active (the prompt starts with `(.venv)`). Otherwise Python can't find `snowflake.connector`.
 
 1. In a Snowsight worksheet, run `sql/00_setup.sql` as ACCOUNTADMIN. It creates the database, roles, warehouse and masking policies.
 2. Create a key pair for the service user and attach the public key (steps in `docs/CONTRACTS.md`, section 10).
 3. Copy `.env.example` to `.env` and fill in your account. Keep `.env` and your key out of git.
-4. Get **Snowflake Public Data (Free)** from Marketplace and run `sql/02_zip_population.sql`.
-5. Run the whole cycle:
+4. Get **Snowflake Public Data (Free)** from Marketplace and run `sql/02_zip_population.sql`. Set `LH_PUBLIC_ZIP_TABLE=LEAKHUNTER.DATA.ZIP_POPULATION` in `.env`.
+5. Optional, for the AI attacker and the live Bouncer demo: install [Ollama](https://ollama.com) and run `ollama pull gemma3:4b`. Everything else works without it; the agent demo falls back to a sample package list.
+6. Run the whole cycle:
 
 ```bash
 python -m setup.generate_data          # synthetic warehouse
@@ -72,6 +79,8 @@ Then open `site/index.html`. Other useful commands:
 | `python demo/run_demo.py round` | One round of attacks and legitimate queries |
 | `python demo/run_demo.py judge` | Opens a new hole (a "quick export"), then catches, fixes and re-checks it |
 | `python demo/run_demo.py agent` | Bouncer and the Change Firewall in action |
+| `python -m attacker.gemma_attacker` | Gemma writes new attacks from plain-English goals (`--goal N` for one) and saves them to `attacks/generated/` |
+| `python skills/bouncer/scripts/demo_gemma.py --extra reqeusts` | Gemma suggests packages and Bouncer checks each one on PyPI |
 | `python demo/run_demo.py scoreboard` | Live scoreboard in your browser |
 
 ## Bringing it to your own data
@@ -101,6 +110,6 @@ Snowflake is supported today. The attack, fix and prove loop doesn't depend on S
 
 ## Team
 
-Built in one afternoon by **Reya Attri**, **Manav Patel** and **Manas**.
+Built in one afternoon by **Reya Attri**, **Manav Patel** and **Manas Khare**.
 
 All data in this project is synthetic. No real personal information is used anywhere.
