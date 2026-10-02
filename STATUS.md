@@ -23,7 +23,7 @@
 - [x] Bouncer logging to `RESULTS.BOUNCER_LOG` (table created from sql/00_setup.sql section E; live rows verified)
 - [x] Bouncer scoreboard panel (green/yellow/red chips + table)
 - [x] `skills/bouncer/scripts/demo_gemma.py` (live Gemma or `--sample`; Ollama not installed on Reya's machine yet) + both skills validate
-- [ ] Bouncer agent wiring (CoCo/Claude Code refusing a BLOCKed package) + screenshot into `docs/coco/`
+- [ ] Bouncer agent wiring (CoCo or another agent refusing a BLOCKed package) + screenshot into `docs/coco/`
 - [x] Live check on Snowflake: round 2 = 6/7 leaks (A03 waits on public ZIP table), legit 10/10; firewall BLOCK/PASS/package-BLOCK all verified, no clone left behind
 - [ ] Demo rehearsal, backup video, MLH submission by 3:20
 
