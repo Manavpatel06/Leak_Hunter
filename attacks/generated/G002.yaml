@@ -1,0 +1,11 @@
+id: G002
+goal: See any employee's salary next to their name
+technique: direct_sql
+source: gemma
+targets_leak: L2
+sql: |
+  SELECT FULL_NAME, SALARY FROM LEAKHUNTER.DATA.EMPLOYEES LIMIT 10
+success:
+  type: regex
+  column: FULL_NAME
+  pattern: ^(?!REDACTED$).+
