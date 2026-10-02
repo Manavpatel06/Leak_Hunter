@@ -214,8 +214,30 @@ def firewall_panel() -> None:
         st.code(latest["CHANGE_SQL"] or "", language="sql")
 
 
+@st.fragment(run_every=REFRESH)
+def bouncer_panel() -> None:
+    """Bouncer: the latest package checks, ALLOW green / WARN yellow / BLOCK red (RESULTS.BOUNCER_LOG)."""
+    try:
+        log = frame("SELECT CHECKED_AT, PACKAGE, VERDICT, REASONS, REQUESTED_BY "
+                    "FROM LEAKHUNTER.RESULTS.BOUNCER_LOG ORDER BY CHECKED_AT DESC LIMIT 12")
+    except Exception:
+        return  # table comes from sql/00_setup.sql section E
+    if log.empty:
+        return
+    st.markdown("### Bouncer: packages checked before an AI installs them")
+    colors = {"ALLOW": GREEN, "WARN": "#e9a100", "BLOCK": RED}
+    chips = "".join(f'<span class="lh-chip" style="background:{colors.get(r["VERDICT"], GREY)}">'
+                    f'{r["PACKAGE"]}: {r["VERDICT"]}</span>' for _, r in log.head(6).iterrows())
+    st.markdown(f'<div class="lh-rounds">{chips}</div>', unsafe_allow_html=True)
+    counts = log["VERDICT"].value_counts()
+    st.caption(f"Last {len(log)} checks: {counts.get('BLOCK', 0)} blocked, {counts.get('WARN', 0)} warned, "
+               f"{counts.get('ALLOW', 0)} allowed")
+    st.dataframe(log.rename(columns={"REQUESTED_BY": "ASKED_BY"}), hide_index=True, width="stretch")
+
+
 st.title("🛡️ LeakHunter")
 st.caption("An AI attacks the warehouse, another fixes every leak, and a referee proves the fixes hold "
            "without breaking legitimate work. All data is synthetic.")
 board()
+bouncer_panel()
 firewall_panel()
