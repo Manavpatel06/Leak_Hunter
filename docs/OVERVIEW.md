@@ -44,8 +44,14 @@ Masking was chosen so legitimate aggregates survive: `LEFT(ZIP,3)`, `YEAR(DOB)` 
 
 ## 4. Results from the live warehouse
 
-Latest recorded round (round 2): **11 of 12 attacks leak** and **10 of 10 legitimate queries pass**.
+The full loop has been run on the live warehouse and is logged in `RESULTS`:
 
+| Round | Leaks | Legitimate queries |
+|---|---|---|
+| 1 (before any fix) | **11 of 12 attacks leak** | 10 / 10 pass |
+| 2 (after the defender's 11 logged fixes) | **0 leaks** | **10 / 10 still pass** |
+
+- The fixes in `RESULTS.FIXES` were applied by the `defender/apply_fixes.py` fallback script. A run with CoCo and the `pii-guardian` skill is still to be shown.
 - Attack A03 re-identifies patients by joining the "anonymized" view with the free public ZIP population table.
 - One Gemma-generated attack (G005) found nothing readable, which the scoreboard shows in its Rejected panel. A failed or erroring query is never counted as a leak.
 - With full ZIP, full birth date and sex, **all 2,000 patients are unique**. Generalizing to a 3-digit ZIP and birth decade, and dropping any group smaller than 5, leaves everyone hiding in a group of at least 5 (about 4.7% of patients are dropped from the view). The dashboard's re-identification lab lets you move those sliders yourself.

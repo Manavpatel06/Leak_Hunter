@@ -56,12 +56,22 @@ def main() -> None:
         score = rows(conn, "SELECT ROUND_NO, LEAKS, ATTACKS, LEGIT_PASSED, LEGIT_TOTAL "
                            "FROM LEAKHUNTER.RESULTS.SCOREBOARD ORDER BY ROUND_NO")
         latest = max((r["round_no"] for r in score), default=0)
-        attacks = rows(conn, f"SELECT ATTACK_ID, GOAL, TECHNIQUE, SOURCE, TARGETS_LEAK, SUCCEEDED, ERROR, EVIDENCE "
-                             f"FROM LEAKHUNTER.RESULTS.ATTACK_RUNS WHERE ROUND_NO = {latest} ORDER BY ATTACK_ID")
-        legit = rows(conn, f"SELECT QUERY_ID, DESCRIPTION, PASSED FROM LEAKHUNTER.RESULTS.LEGIT_RUNS "
-                           f"WHERE ROUND_NO = {latest} ORDER BY QUERY_ID")
-        fixes = rows(conn, "SELECT ATTACK_ID, FIX_TYPE, SQL_APPLIED, APPLIED_BY FROM LEAKHUNTER.RESULTS.FIXES "
-                           "ORDER BY APPLIED_AT")
+        # "before" = the round with the most leaks (earliest on a tie); "after" = a later round, if one exists
+        before = min((r for r in score), key=lambda r: (-(r["leaks"] or 0), r["round_no"]), default={"round_no": 0})["round_no"]
+        after = latest if latest > before else None
+
+        def attacks_of(rnd):
+            return rows(conn, f"SELECT ATTACK_ID, GOAL, TECHNIQUE, SOURCE, TARGETS_LEAK, SUCCEEDED, ERROR, EVIDENCE "
+                              f"FROM LEAKHUNTER.RESULTS.ATTACK_RUNS WHERE ROUND_NO = {rnd} ORDER BY ATTACK_ID")
+
+        def legit_of(rnd):
+            return rows(conn, f"SELECT QUERY_ID, DESCRIPTION, PASSED FROM LEAKHUNTER.RESULTS.LEGIT_RUNS "
+                              f"WHERE ROUND_NO = {rnd} ORDER BY QUERY_ID")
+        attacks, legit = attacks_of(before), legit_of(before)
+        attacks_after = attacks_of(after) if after else []
+        legit_after = legit_of(after) if after else []
+        fixes = rows(conn, "SELECT ATTACK_ID, FIX_TYPE, SQL_APPLIED, RATIONALE, APPLIED_BY FROM "
+                           "LEAKHUNTER.RESULTS.FIXES ORDER BY APPLIED_AT")
         bouncer = rows(conn, "SELECT PACKAGE, VERDICT, REASONS, REQUESTED_BY, CHECKED_AT FROM "
                              "LEAKHUNTER.RESULTS.BOUNCER_LOG ORDER BY CHECKED_AT DESC LIMIT 200")
         try:
@@ -102,7 +112,8 @@ def main() -> None:
                if ln.strip() and not ln.startswith("#")]
     data = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "rounds": score, "latest_round": latest, "attacks": attacks, "legit": legit, "fixes": fixes,
+        "rounds": score, "latest_round": latest, "before_round": before, "after_round": after,
+        "attacks": attacks, "legit": legit, "attacks_after": attacks_after, "legit_after": legit_after, "fixes": fixes,
         "bouncer": pkgs, "bouncer_total": len(bouncer), "firewall_cases": cases,
         "firewall_total": len(audit_raw),
         "firewall_blocked": sum(1 for r in audit_raw if r["verdict"] == "BLOCK"),
