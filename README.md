@@ -15,7 +15,7 @@ Tracks: Best Use of Snowflake · Best Open-Source AI Project · License: MIT
 4. `STATUS.md` — what's done, what's blocked. Update your own section.
 5. Your own area's folder (see the ownership table in `docs/PLAN.md`).
 
-Background reading: `docs/IDEA.md` (the pitch) and `docs/DEMO.md` (the expo script).
+Background reading: `docs/IDEA.md` (the pitch), `docs/DEMO.md` (the expo script), `docs/BOUNCER.md` (the second skill).
 
 ## Quick start
 
@@ -34,6 +34,7 @@ python -m leakhunter.db     # connection smoke test: prints current role + wareh
 3. **Fix** — CoCo, using our open-standard `pii-guardian` skill, applies Snowflake-native fixes (masking, row access, revoked grants).
 4. **Referee** — re-runs every attack *and* a set of legitimate analyst queries. Scoreboard: leaks remaining vs. legitimate queries still working.
 5. **Report** — plain-English audit summary, each leak tagged to the rule it breaks.
+6. **Bouncer** — a second skill that checks every Python package *before* an AI agent installs it, blocking packages the AI invented, look-alikes of popular packages, and brand-new ones. Leaks don't only come from permissions; they come from the code your AI installs.
 
 ## Repo map
 
@@ -42,7 +43,9 @@ python -m leakhunter.db     # connection smoke test: prints current role + wareh
 | `sql/`, `setup/` | Snowflake objects, synthetic data, leak planting | Manav |
 | `defender/`, `skills/pii-guardian/` | The fix skill + defender run | Manav |
 | `attacks/`, `attacker/`, `referee/`, `chatbot/` | Attack library, Gemma attacker, re-run engine | Manas |
-| `legit/`, `scoreboard/`, `report/`, `demo/` | Legit queries, Streamlit scoreboard, audit report, demo | Reya |
+| `report/` | Audit report | Manav |
+| `legit/` | Legitimate analyst queries | Manas |
+| `skills/bouncer/`, `scoreboard/`, `demo/` | Bouncer skill, Streamlit scoreboard, demo | Reya |
 | `leakhunter/` | Shared config + DB helpers (change only after telling the group) | shared |
 
 All data is synthetic. No real personal data is used anywhere.

@@ -1,4 +1,4 @@
-# referee/ — owner: Manas (legit query content: Reya)
+# referee/ — owner: Manas
 
 ## Tasks
 1. `run_attacks.py` — load every YAML in `attacks/library/` and `attacks/generated/`, substitute `{PUBLIC_ZIP_TABLE}` from config, run each as `LH_ANALYST` via `db.connect(ANALYST)`, judge it with its `success` rule, log with `db.log_attack_run`. Supports `direct_sql`, `join`, `reidentification`, `role_escalation`, `sweep` (and `chatbot` if the stretch lands).

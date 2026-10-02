@@ -1,10 +1,11 @@
 # STATUS — update your own section only (pull first). Format: [time] done / doing / blocked
 
 ## Manav
-- [ ] Enterprise trial + `sql/00_setup.sql` + LH_BOT key + `.env` shared privately
+- [ ] Enterprise trial + `sql/00_setup.sql` (sections A–E) + LH_BOT key + `.env` shared privately
 - [ ] Public data listing + exact zip table posted in CONTRACTS §4
 - [ ] `setup/generate_data.py`, `plant_leaks.py`, `reset.py`
-- [ ] Defender: CoCo run + `defender/apply_fixes.py` fallback + skill validated
+- [ ] Defender: CoCo run + `defender/apply_fixes.py` fallback + pii-guardian validated
+- [ ] `report/generate.py`
 
 ## Manas
 - [x] Ollama + Gemma producing valid SQL (`gemma3:4b`, tested offline against CONTRACTS §3 schema)
@@ -12,16 +13,19 @@
 - [ ] A03 re-identification finalized against public table — blocked: needs CONTRACTS §4 table + columns
 - [x] `attacker/gemma_attacker.py` written (goals now carry their success rule; rejects fake column aliases); live run waiting on `.env`
 - [ ] Stretch: `chatbot/`
+- [x] `legit/queries.yaml` Q04-Q10 filled in by Reya (Manas: review, they run through your `run_legit.py`)
 
-## Reya (from ~1:00)
-- [ ] Read README → AGENTS → PLAN → CONTRACTS, connection smoke test passes (waiting on `.env` + key from Manav)
-- [x] `legit/queries.yaml` (10 queries, all safe under the §5 masking/revoke fixes) — runner `referee/run_legit.py` is Manas's
-- [x] `scoreboard/app.py` (incl. Rejected panel) — tested against a local stub; needs a live check once Snowflake is up
-- [x] `report/generate.py` → `report/audit_report.md` — tested against a local stub; needs a live check
-- [x] `firewall/` Change Firewall + Package Guard (`leakcheck`, `package_guard`, probes, examples, `python -m firewall.selftest` passes offline); `pii-guardian` skill updated to submit changes through it (heads-up Manav); scoreboard "Change Firewall" panel; DEMO.md beat added. Live Snowflake run pending `.env`.
+## Reya
+- [x] Connection smoke test passes (both roles); `.env` + key in place
+- [x] `scoreboard/app.py` (big numbers, round history, leak log, fixes, Rejected panel, Change Firewall panel); verified against a stub
+- [x] `firewall/` Change Firewall + Package Guard, `python -m firewall.selftest` passes offline; `pii-guardian` skill now submits changes through it (heads-up Manav)
+- [x] `report/generate.py` written (Manav: it is on your list too, take whichever you prefer)
+- [ ] Bouncer logging to `RESULTS.BOUNCER_LOG`
+- [ ] Bouncer scoreboard panel
+- [ ] Bouncer Gemma demo script + agent wiring + `skills-ref validate ./skills/bouncer`
 - [ ] Demo rehearsal, backup video, MLH submission by 3:20
 
 ## Checkpoints
-- [ ] 2:15 — Round 1 end to end
-- [ ] 2:50 — Full loop: leaks → 0, legit 10/10 (FEATURE FREEZE)
+- [ ] 2:15 — Round 1 end to end + one Bouncer check on the scoreboard
+- [ ] 2:50 — Full loop: leaks → 0, legit 10/10, Bouncer blocks a package (FEATURE FREEZE)
 - [ ] 3:20 — Submitted

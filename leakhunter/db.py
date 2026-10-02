@@ -104,6 +104,16 @@ def log_fix(admin_conn, *, round_no: int, attack_id: str, fix_type: str, sql_app
            "sql": sql_applied, "why": rationale, "by": applied_by})
 
 
+def log_bouncer(admin_conn, *, package: str, verdict: str, reasons: str,
+                requested_by: str, ecosystem: str = "pypi") -> None:
+    query(admin_conn,
+          """INSERT INTO LEAKHUNTER.RESULTS.BOUNCER_LOG
+             (CHECK_ID, PACKAGE, ECOSYSTEM, VERDICT, REASONS, REQUESTED_BY)
+             VALUES (%(id)s, %(pkg)s, %(eco)s, %(verdict)s, %(reasons)s, %(by)s)""",
+          {"id": _new_id(), "pkg": package, "eco": ecosystem, "verdict": verdict,
+           "reasons": reasons[:1000], "by": requested_by})
+
+
 if __name__ == "__main__":
     for role in (ADMIN, ANALYST):
         c = connect(role)
