@@ -68,41 +68,46 @@ def fetch() -> dict:
 
 
 # ------------------------------------------------------------------ rendering
-FIX_PLAIN = {
-    "L1": "Masked the SSN column. The analyst now sees ***-**-1234.",
-    "L2": "Masked employee names. Salaries stay visible, so averages still work.",
-    "L3": "Generalized ZIP to 3 digits and birth date to the year. The Census join finds no one.",
-    "L4": "Revoked the HR role from the analyst role.",
-    "L5": "Revoked analyst access to SCRATCH and dropped the stale copy.",
-    "L6": "Masked patient names. Diagnoses stay usable for reporting.",
+# Product view of one scan cycle. Severity / asset / remediation per root cause (CONTRACTS §5).
+FINDING = {
+    "L1": ("Critical", "Patient SSNs readable in clear text", "DATA.PATIENTS.SSN",
+           "Masking policy MASK_SSN on the column. Analysts see ***-**-1234."),
+    "L3": ("Critical", "“Anonymized” patients re-identifiable with public Census data", "DATA.PATIENT_DEMOGRAPHICS",
+           "ZIP generalized to 3 digits, birth date to year (MASK_ZIP, MASK_DOB). The Census join matches no one."),
+    "L5": ("High", "Forgotten raw export of patient records", "SCRATCH.PATIENTS_EXPORT_OLD",
+           "Analyst access to SCRATCH revoked; stale copy dropped."),
+    "L6": ("High", "Patient names joined to diagnoses", "DATA.VISIT_DETAILS",
+           "Masking policy MASK_NAME on patient names. Diagnoses stay usable."),
+    "L2": ("High", "Salaries readable next to employee names", "DATA.EMPLOYEES.FULL_NAME",
+           "Masking policy MASK_NAME on employee names. Salary averages still work."),
+    "SWEEP": ("High", "SSN columns found outside the known inventory", "All analyst-readable tables",
+              "Closed by the SSN mask and the SCRATCH revoke above."),
+    "L4": ("Medium", "HR performance reviews reachable through a role grant", "Role LH_HR → LH_ANALYST",
+           "Role grant revoked (least privilege)."),
 }
-LEAK_SHORT = {
-    "L1": "Patient SSNs readable", "L2": "Salaries readable by name", "L3": "“Anonymous” patients re-identified",
-    "L4": "HR reviews reachable via a role grant", "L5": "Forgotten raw export in SCRATCH",
-    "L6": "Names joined to diagnoses in a view",
-}
+SEV_ORDER = {"Critical": 0, "High": 1, "Medium": 2}
 
 
 def e(v) -> str:
     return html.escape("" if v is None else str(v))
 
 
-def _findings_kind(raw) -> str:
-    try:
-        f = json.loads(raw or "{}").get("findings") or []
-        return f[0].get("kind", "").replace("_", " ") if f else "no leak found on the clone"
-    except Exception:
-        return "see audit trail"
+def _kind(raw) -> str:
+    import re
+    m = re.search(r'"kind":\s*"([a-z_]+)"', raw or "")
+    if m:
+        return m.group(1).replace("_", " ")
+    return "no leak found on the clone" if '"findings": []' in (raw or "") else "see audit trail"
 
 
 def build_html(d: dict) -> str:
     board, attacks, fixes = d["scoreboard"], d["attacks"], d["fixes"]
     first, last = (board[0], board[-1]) if board else ({}, {})
-    reid = d["reidentified"][0]["N"] if d.get("reidentified") else None
-    leaks0, leaks1 = int(first.get("LEAKS") or 0), int(last.get("LEAKS") or 0)
+    reid = d["reidentified"][0]["N"] if d.get("reidentified") else 0
+    found, open_now = int(first.get("LEAKS") or 0), int(last.get("LEAKS") or 0)
     lp, lt = int(last.get("LEGIT_PASSED") or 0), int(last.get("LEGIT_TOTAL") or 0)
+    n_attacks = int(last.get("ATTACKS") or 0)
 
-    # group successful attacks by leak
     runs: dict[str, dict[int, bool]] = {}
     meta: dict[str, dict] = {}
     for a in attacks:
@@ -112,107 +117,141 @@ def build_html(d: dict) -> str:
     fix_by = {f["ATTACK_ID"]: f for f in fixes}
     groups: dict[str, list[str]] = {}
     for aid in sorted(runs):
-        if not any(runs[aid].values()):
-            continue
-        leak = (meta[aid].get("TARGETS_LEAK") or "").upper() or ATTACK_TO_LEAK.get(aid, "") or "SWEEP"
-        groups.setdefault(leak, []).append(aid)
+        if any(runs[aid].values()):
+            leak = (meta[aid].get("TARGETS_LEAK") or "").upper() or ATTACK_TO_LEAK.get(aid, "") or "SWEEP"
+            groups.setdefault(leak, []).append(aid)
 
-    rows = []
-    for leak in sorted(groups, key=lambda k: (k == "SWEEP", k)):
+    items = []
+    for leak in sorted(groups, key=lambda k: (SEV_ORDER[FINDING.get(k, ("High",))[0]], k)):
         aids = groups[leak]
-        still_open = any(runs[a][max(runs[a])] for a in aids)
-        if leak == "SWEEP":
-            title, fix = "SSN sweep found copies nobody listed", "Closed with the same fixes: SSN mask + SCRATCH revoked."
-            tags = "HIPAA minimum necessary"
-        else:
-            title, fix = LEAK_SHORT.get(leak, leak), FIX_PLAIN.get(leak, "")
-            tags = "; ".join(LEAK_TAGS.get(leak, []))
+        sev, title, asset, fix = FINDING.get(leak, ("High", leak, "", ""))
+        is_open = any(runs[a][max(runs[a])] for a in aids)
         sqls = sorted({(fix_by[a].get("SQL_APPLIED") or "").strip() for a in aids if a in fix_by} - {""})
-        sql_html = (f'<details><summary>SQL</summary><pre>{e(chr(10).join(sqls))}</pre></details>' if sqls else "")
-        who = ", ".join(f'{a}{"*" if meta[a].get("SOURCE") == "gemma" else ""}' for a in aids)
-        status = '<span class="st open">Open</span>' if still_open else '<span class="st ok">Fixed &amp; re-checked</span>'
-        rows.append(f"<tr><td><div class='t'>{e(title)}</div><div class='m'>{e(tags)}</div></td>"
-                    f"<td class='m'>{e(who)}</td><td>{e(fix)}{sql_html}</td><td>{status}</td></tr>")
-    findings = "".join(rows) or "<tr><td colspan='4' class='m'>No leaks found yet.</td></tr>"
+        tags = "; ".join(LEAK_TAGS.get(leak, ["HIPAA Privacy Rule (minimum necessary)"]))
+        det = ", ".join(f'{a} ({"Gemma" if meta[a].get("SOURCE") == "gemma" else "library"})' for a in aids)
+        status = '<span class="pill red">Open</span>' if is_open else '<span class="pill green">Verified fixed</span>'
+        items.append(f"""<details class="f"><summary>
+<span class="sev {sev.lower()}">{sev}</span><span class="ft">{e(title)}</span><span class="asset">{e(asset)}</span>{status}</summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>{e(det)}</dd>
+<dt>Policy</dt><dd>{e(tags)}</dd>
+<dt>Remediation</dt><dd>{e(fix)}</dd>
+<dt>Verification</dt><dd>{"Still reachable in the latest scan." if is_open else f"Attack re-run in scan #{last.get('ROUND_NO')}: blocked."}</dd>
+</dl>{f'<pre>{e(chr(10).join(sqls))}</pre>' if sqls else ''}</div></details>""")
+    findings = "".join(items) or '<p class="muted">No findings.</p>'
+    crit = sum(1 for k in groups if FINDING.get(k, ("High",))[0] == "Critical")
 
-    b = d.get("bouncer", [])
-    b_block = [x for x in b if x.get("VERDICT") == "BLOCK"]
+    b, seen = [], set()
+    for x in d.get("bouncer", []):          # latest verdict per package
+        if x.get("PACKAGE") not in seen:
+            seen.add(x.get("PACKAGE"))
+            b.append(x)
     fw = d.get("firewall", [])
-    fw_block, fw_pass = sum(1 for x in fw if x.get("VERDICT") == "BLOCK"), sum(1 for x in fw if x.get("VERDICT") == "PASS")
-    b_rows = "".join(f"<tr><td><code>{e(x['PACKAGE'])}</code></td><td>{e(x['VERDICT'])}</td><td class='m'>{e((x.get('REASONS') or '').split(';')[0])}</td></tr>" for x in b[:8])
-    fw_rows = "".join(f"<tr><td><code>{e(x['CHANGE_ID'])}</code></td><td>{e(x['VERDICT'])}{' · merged' if x.get('MERGED') else ''}</td><td class='m'>{e(_findings_kind(x.get('FINDINGS')))}</td></tr>" for x in fw[:8])
+    b_block = sum(1 for x in b if x.get("VERDICT") == "BLOCK")
+    fw_block = sum(1 for x in fw if x.get("VERDICT") == "BLOCK")
+    fw_pass = sum(1 for x in fw if x.get("VERDICT") == "PASS")
+    vcls = {"BLOCK": "red", "WARN": "amber", "ALLOW": "green", "PASS": "green", "ERROR": "red"}
+    b_rows = "".join(f'<tr><td><code>{e(x["PACKAGE"])}</code></td><td><span class="pill {vcls.get(x["VERDICT"], "")}">{e(x["VERDICT"].title())}</span></td><td class="muted">{e((x.get("REASONS") or "").split(";")[0])}</td></tr>' for x in b[:6])
+    fw_rows = "".join(f'<tr><td><code>{e(x["CHANGE_ID"])}</code></td><td><span class="pill {vcls.get(x["VERDICT"], "")}">{e(x["VERDICT"].title())}</span></td><td class="muted">{e(_kind(x.get("FINDINGS")))}</td></tr>' for x in fw[:6])
 
-    rounds = "".join(f"<li><b>Round {r['ROUND_NO']}</b> {int(r['LEAKS'] or 0)} of {int(r['ATTACKS'] or 0)} attacks leaked · "
-                     f"legit {int(r['LEGIT_PASSED'] or 0)}/{int(r['LEGIT_TOTAL'] or 0)}</li>" for r in board)
-    n_gemma = sum(1 for a in groups.values() for x in a if meta[x].get("SOURCE") == "gemma")
+    scans = []
+    for i, r in enumerate(board):
+        lk = int(r["LEAKS"] or 0)
+        scans.append(f'<li><div class="dot {"red" if lk else "green"}"></div><div><b>Scan #{r["ROUND_NO"]}</b>'
+                     f'<span class="muted"> · {int(r["ATTACKS"] or 0)} attacks · legit {int(r["LEGIT_PASSED"] or 0)}/{int(r["LEGIT_TOTAL"] or 0)}</span>'
+                     f'<div>{lk} leak{"s" if lk != 1 else ""} proven</div></div></li>')
+        if i < len(board) - 1:
+            nfix = sum(1 for f in fixes if int(f["ROUND_NO"]) == int(r["ROUND_NO"]))
+            scans.append(f'<li><div class="dot blue"></div><div><b>Remediation</b><span class="muted"> · pii-guardian playbook</span>'
+                         f'<div>{nfix} fixes applied and logged</div></div></li>')
+    posture = "Protected" if board and open_now == 0 else ("At risk" if board else "Not scanned")
 
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>LeakHunter Results</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>LeakHunter</title>
 <style>
-:root{{--bg:#fafaf9;--card:#ffffff;--ink:#1c1c1a;--m:#6a6a64;--line:#e7e6e1;--accent:#1f4e8c;--ok:#1d6b45;--okbg:#e8f3ec;--bad:#a8261b;--badbg:#fbeceb}}
-@media (prefers-color-scheme:dark){{:root{{--bg:#141413;--card:#1c1c1b;--ink:#ebeae5;--m:#a09f98;--line:#2f2e2b;--accent:#8fb3e8;--ok:#6ccf98;--okbg:#16301f;--bad:#ff8f80;--badbg:#381a16}}}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}}
-main{{max-width:980px;margin:0 auto;padding:40px 16px 64px}}
-.k{{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--m);margin:0 0 6px}}
-h1{{font-size:30px;line-height:1.2;margin:0 0 8px;font-weight:700}}.lead{{color:var(--m);max-width:680px;margin:0}}
-h2{{font-size:19px;margin:0 0 4px}}.sub{{color:var(--m);margin:0 0 16px;font-size:15px}}
-section{{margin-top:40px}}
-.hero{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:28px}}
-.hero div{{background:var(--card);padding:22px}}.n{{font-size:36px;font-weight:700;line-height:1.1}}.n small{{font-size:20px;color:var(--m);font-weight:600}}
-.hero p{{margin:6px 0 0;color:var(--m);font-size:14px}}
-.steps{{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}}
-.step{{border-top:2px solid var(--accent);padding-top:12px}}.step b{{display:block;margin-bottom:4px}}.step p{{margin:0;color:var(--m);font-size:15px}}
-.tbl{{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto}}
-table{{width:100%;border-collapse:collapse;font-size:15px}}th,td{{text-align:left;padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}}
-th{{border-top:0;font-size:13px;color:var(--m);font-weight:600}}.t{{font-weight:600}}.m{{color:var(--m);font-size:13px}}
-.st{{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}}
-.st.ok{{background:var(--okbg);color:var(--ok)}}.st.open{{background:var(--badbg);color:var(--bad)}}
-details{{margin-top:6px}}summary{{cursor:pointer;color:var(--accent);font-size:13px}}
-pre,code{{font:12.5px/1.45 ui-monospace,Consolas,monospace}}pre{{white-space:pre-wrap;word-break:break-word;color:var(--m);margin:6px 0 0}}
-ul.r{{list-style:none;padding:0;margin:0}}ul.r li{{padding:6px 0;border-bottom:1px solid var(--line)}}
-.more>summary{{font-size:16px;color:var(--ink);font-weight:600;padding:14px 0}}.more .tbl{{margin-bottom:16px}}
-footer{{margin-top:48px;color:var(--m);font-size:13px;border-top:1px solid var(--line);padding-top:16px}}
-</style></head><body><main>
-<p class="k">LeakHunter · leak audit · Snowflake</p>
-<h1>Every leak we could prove was fixed, and every fix was proven to hold.</h1>
-<p class="lead">LeakHunter attacks a data warehouse the way a real insider would, fixes what it proves, and re-checks that the fixes hold without breaking legitimate work. This run: synthetic hospital and HR data · snapshot {e(d.get('generated_at'))}.</p>
-
-<div class="hero">
-<div><div class="n">{leaks0} <small>&rarr;</small> {leaks1}</div><p>leaks found, then left after the fixes</p></div>
-<div><div class="n">{lp}<small>/{lt}</small></div><p>legitimate analyst queries still work</p></div>
-<div><div class="n">{'—' if reid is None else reid}<small> / 2,000</small></div><p>&ldquo;anonymous&rdquo; patients re-identified with free Census data, before the fix</p></div>
-</div>
-
-<section><h2>How it works</h2><p class="sub">Three steps, run as many rounds as you like.</p>
-<div class="steps">
-<div class="step"><b>1 · Attack</b><p>A hand-written attack library plus attacks written by Gemma (an open model, run locally) query the warehouse as the analyst role.</p></div>
-<div class="step"><b>2 · Fix</b><p>The open pii-guardian skill maps each proven leak to the smallest Snowflake-native fix: a masking policy, a revoked grant, or a dropped copy.</p></div>
-<div class="step"><b>3 · Prove</b><p>The referee re-runs every attack and ten legitimate analyst queries. Success means leaks at zero and nothing legitimate broken.</p></div>
+:root{{--bg:#f6f7f9;--panel:#fff;--ink:#14161a;--muted:#646b76;--line:#e3e6eb;--brand:#3346d3;--brandbg:#eef0fd;
+--green:#13804a;--greenbg:#e6f4ec;--red:#c4321f;--redbg:#fcebe8;--amber:#9a5b00;--amberbg:#fdf2dc;--side:#fbfbfc}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#0f1114;--panel:#171a1f;--ink:#e8eaee;--muted:#9aa1ac;--line:#272b33;--brand:#8b98ff;--brandbg:#1d2140;
+--green:#5fd39a;--greenbg:#12291d;--red:#ff8b7a;--redbg:#33170f;--amber:#f2c063;--amberbg:#33270f;--side:#13161a}}}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}}
+a{{color:inherit;text-decoration:none}}code,pre{{font:12.5px/1.5 ui-monospace,"Cascadia Code",Consolas,monospace}}
+.app{{display:grid;grid-template-columns:220px 1fr;min-height:100vh}}
+aside{{background:var(--side);border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh}}
+.logo{{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin:2px 6px 22px}}
+.mark{{width:26px;height:26px;border-radius:7px;background:var(--brand);display:grid;place-items:center}}
+.mark i{{width:10px;height:10px;border:2.5px solid #fff;border-radius:50%}}
+nav a{{display:block;padding:8px 10px;border-radius:8px;color:var(--muted);font-weight:500}}nav a:hover{{background:var(--brandbg);color:var(--ink)}}
+nav a.on{{background:var(--brandbg);color:var(--brand)}}
+.side-foot{{position:absolute;bottom:18px;left:14px;right:14px;font-size:12px;color:var(--muted);padding:0 6px}}
+header{{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 32px;border-bottom:1px solid var(--line);background:var(--panel)}}
+.ws{{display:flex;align-items:center;gap:10px;font-weight:600}}.ws .muted{{font-weight:400}}
+.live{{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--greenbg)}}
+main{{padding:28px 32px 56px;max-width:1180px}}h1{{font-size:22px;margin:0 0 4px}}h2{{font-size:15px;margin:0 0 12px}}
+.muted{{color:var(--muted)}}section{{margin-top:28px;scroll-margin-top:16px}}
+.panel{{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}}
+.cards{{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px}}
+.lab{{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.05em}}
+.big{{font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:-.01em}}.big small{{font-size:16px;color:var(--muted);font-weight:500}}
+.status{{display:flex;align-items:center;gap:10px}}.status .big{{color:var(--green)}}.status.risk .big{{color:var(--red)}}
+.shield{{width:34px;height:34px;border-radius:10px;background:var(--greenbg);display:grid;place-items:center;color:var(--green);font-weight:800}}
+.risk .shield{{background:var(--redbg);color:var(--red)}}
+.pill{{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--line)}}
+.pill.green{{background:var(--greenbg);color:var(--green)}}.pill.red{{background:var(--redbg);color:var(--red)}}.pill.amber{{background:var(--amberbg);color:var(--amber)}}
+.grid2{{display:grid;grid-template-columns:2fr 1fr;gap:14px}}
+.f{{border-top:1px solid var(--line)}}.f:first-of-type{{border-top:0}}
+.f summary{{list-style:none;cursor:pointer;display:grid;grid-template-columns:78px 1fr 230px 110px;gap:12px;align-items:center;padding:13px 4px}}
+.f summary::-webkit-details-marker{{display:none}}.f summary:hover{{background:var(--bg)}}
+.ft{{font-weight:600}}.asset{{color:var(--muted);font:12px ui-monospace,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.sev{{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:6px;text-align:center}}
+.sev.critical{{background:var(--redbg);color:var(--red)}}.sev.high{{background:var(--amberbg);color:var(--amber)}}.sev.medium{{background:var(--brandbg);color:var(--brand)}}
+.fd{{padding:2px 4px 16px 94px}}dl{{display:grid;grid-template-columns:110px 1fr;gap:6px 14px;margin:0}}dt{{color:var(--muted)}}dd{{margin:0}}
+pre{{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:12px 0 0;white-space:pre-wrap;word-break:break-word;color:var(--muted)}}
+.tl{{list-style:none;margin:0;padding:0}}.tl li{{display:flex;gap:12px;padding:0 0 16px;position:relative}}
+.tl li:not(:last-child)::before{{content:"";position:absolute;left:5px;top:16px;bottom:0;width:2px;background:var(--line)}}
+.dot{{width:12px;height:12px;border-radius:50%;margin-top:4px;flex:none}}.dot.red{{background:var(--red)}}.dot.green{{background:var(--green)}}.dot.blue{{background:var(--brand)}}
+table{{width:100%;border-collapse:collapse}}td,th{{padding:9px 6px;border-top:1px solid var(--line);text-align:left;vertical-align:top}}th{{border-top:0;color:var(--muted);font-weight:500;font-size:12px}}
+.ints{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}}.int{{display:flex;justify-content:space-between;align-items:center}}
+@media (max-width:900px){{.app{{grid-template-columns:1fr}}aside{{display:none}}.cards,.grid2{{grid-template-columns:1fr}}
+.f summary{{grid-template-columns:70px 1fr}}.asset,.f summary .pill{{display:none}}.fd{{padding-left:4px}}main,header{{padding-left:16px;padding-right:16px}}}}
+</style></head><body><div class="app">
+<aside><div class="logo"><span class="mark"><i></i></span>LeakHunter</div>
+<nav><a class="on" href="#overview">Overview</a><a href="#findings">Findings</a><a href="#scans">Scan history</a><a href="#agents">Agent guard</a><a href="#integrations">Integrations</a></nav>
+<div class="side-foot">Open source · MIT<br>github.com/Manavpatel06/Leak_Hunter</div></aside>
+<div><header><div class="ws"><span class="live"></span>Snowflake <span class="muted">/ LEAKHUNTER</span></div>
+<div class="muted">Last scan {e(d.get('generated_at'))} · <span class="pill green">Scan complete</span></div></header>
+<main>
+<section id="overview" style="margin-top:0"><h1>Overview</h1><p class="muted" style="margin:0 0 18px">Continuous leak testing: attack as an insider, fix what is proven, verify nothing legitimate broke.</p>
+<div class="cards">
+<div class="panel status {'' if posture == 'Protected' else 'risk'}"><div class="shield">{'✓' if posture == 'Protected' else '!'}</div><div><div class="lab">Data posture</div><div class="big">{posture}</div>
+<div class="muted">{open_now} open leaks · {found} found and fixed · {crit} critical</div></div></div>
+<div class="panel"><div class="lab">Business continuity</div><div class="big">{lp}<small> / {lt}</small></div><div class="muted">analyst queries still pass after fixes</div></div>
+<div class="panel"><div class="lab">Re-identification risk</div><div class="big">{reid}<small> → 0</small></div><div class="muted">patients identifiable via public Census data</div></div>
 </div></section>
 
-<section><h2>What leaked, and how it was fixed</h2><p class="sub">Grouped by root cause. * = attack written by Gemma.</p>
-<div class="tbl"><table><tr><th>Leak</th><th>Caught by</th><th>Fix</th><th>Status</th></tr>{findings}</table></div></section>
+<section class="grid2">
+<div class="panel" id="findings"><h2>Findings <span class="muted" style="font-weight:400">· {len(groups)} root causes · click a row for details</span></h2>{findings}</div>
+<div class="panel" id="scans"><h2>Scan history</h2><ul class="tl">{''.join(scans) or '<li class="muted">No scans yet.</li>'}</ul>
+<p class="muted" style="margin:0">Each scan runs {n_attacks} attacks as a low-privilege analyst, plus {lt} legitimate queries.</p></div>
+</section>
 
-<section><h2>Rounds</h2><ul class="r">{rounds}</ul></section>
-
-<section><h2>Plugging it into your data platform</h2><p class="sub">Built to run continuously against a real warehouse, not just this dataset.</p>
-<div class="steps">
-<div class="step"><b>Connect</b><p>Two roles: a low-privilege role to attack as, and an admin role to fix and log. Key-pair auth, no passwords.</p></div>
-<div class="step"><b>Schedule</b><p>Run a round after every schema change, grant, or on a timer. Every attack, fix and re-check is stored as an audit trail.</p></div>
-<div class="step"><b>Fix your way</b><p>The pii-guardian and Bouncer skills follow the open Agent Skills standard, so any agent or a plain script can apply the same playbook.</p></div>
-<div class="step"><b>Extend</b><p>Attacks and legitimate checks are plain YAML. Snowflake today; the attack, fix and prove loop is designed for other warehouses next.</p></div>
+<section id="agents"><h2>Agent guard</h2><div class="grid2" style="grid-template-columns:1fr 1fr">
+<div class="panel"><div class="lab">Package check (Bouncer)</div><div class="big">{b_block}<small> blocked</small></div>
+<p class="muted" style="margin:0 0 8px">Invented or look-alike packages an AI agent tried to install.</p><table><tr><th>Package</th><th>Verdict</th><th>Reason</th></tr>{b_rows}</table></div>
+<div class="panel"><div class="lab">Change firewall</div><div class="big">{fw_block}<small> blocked · {fw_pass} passed</small></div>
+<p class="muted" style="margin:0 0 8px">Agent-proposed changes are tested on a zero-copy clone before they reach production.</p><table><tr><th>Change</th><th>Verdict</th><th>Finding</th></tr>{fw_rows}</table></div>
 </div></section>
 
-<section><details class="more"><summary>Guarding the door for AI agents: {len(b_block)} packages blocked · {fw_block} risky changes blocked, {fw_pass} passed</summary>
-<p class="sub"><b>Bouncer</b> checks every package an AI agent wants to install (invented names, look-alikes, brand-new releases).</p>
-<div class="tbl"><table><tr><th>Package</th><th>Verdict</th><th>Main reason</th></tr>{b_rows or "<tr><td colspan='3' class='m'>No checks yet.</td></tr>"}</table></div>
-<p class="sub"><b>Change Firewall</b> applies an agent's proposed change to a zero-copy clone, attacks the clone, and only allows it if nothing leaks.</p>
-<div class="tbl"><table><tr><th>Change</th><th>Verdict</th><th>Main finding</th></tr>{fw_rows or "<tr><td colspan='3' class='m'>No changes yet.</td></tr>"}</table></div>
-</details></section>
-
-<footer>All data is synthetic (SSNs start with 9, never issued). Attack sample rows are deliberately not shown. Regulation tags
-are pointers for a reviewer, not legal advice. Open source (MIT): github.com/Manavpatel06/Leak_Hunter</footer>
-</main></body></html>"""
+<section id="integrations"><h2>Integrations</h2><div class="ints">
+<div class="panel int"><div><b>Snowflake</b><div class="muted">Key-pair service user, two roles</div></div><span class="pill green">Connected</span></div>
+<div class="panel int"><div><b>Agent Skills</b><div class="muted">pii-guardian · bouncer (open standard)</div></div><span class="pill green">Active</span></div>
+<div class="panel int"><div><b>Open-weight attacker</b><div class="muted">Gemma via Ollama, runs locally</div></div><span class="pill green">Active</span></div>
+<div class="panel int"><div><b>Databricks · BigQuery · Postgres</b><div class="muted">Same attack / fix / verify loop</div></div><span class="pill">Planned</span></div>
+</div><p class="muted" style="margin-top:16px;font-size:12px">All data in this workspace is synthetic. Attack sample rows are never stored in reports. Policy tags are pointers for a reviewer, not legal advice.</p></section>
+</main></div></div>
+<script>
+const links=[...document.querySelectorAll('nav a')];const secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+addEventListener('scroll',()=>{{let i=0;secs.forEach((s,j)=>{{if(s&&s.getBoundingClientRect().top<120)i=j}});links.forEach((a,j)=>a.classList.toggle('on',j===i))}},{{passive:true}});
+</script></body></html>"""
 
 
 def main() -> None:
