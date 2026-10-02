@@ -1,0 +1,129 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Findings · LeakHunter</title><style>
+:root{--bg:#f4f2ed;--panel:#fffdf9;--ink:#16181b;--muted:#5f6368;--line:#e2ded5;--brand:#d9480f;--brandbg:#fbe9df;
+--green:#1e7a46;--greenbg:#e3f1e7;--red:#b42318;--redbg:#fbe7e4;--amber:#8a5300;--amberbg:#f9edd6;--side:#16181b}
+@media (prefers-color-scheme:dark){:root{--bg:#111214;--panel:#191a1d;--ink:#ecebe7;--muted:#9c9c97;--line:#2a2b2f;--brand:#ff7a3d;--brandbg:#33200f;
+--green:#62cf8f;--greenbg:#14281c;--red:#ff8a78;--redbg:#36170f;--amber:#f0bd5a;--amberbg:#34270e;--side:#0c0d0e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:inherit;text-decoration:none}code,pre{font:12.5px/1.5 ui-monospace,"Cascadia Code",Consolas,monospace}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+aside{background:var(--side);color:#e9e7e1;border-right:1px solid #000;padding:18px 14px;position:sticky;top:0;height:100vh}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin:2px 6px 22px}
+.mark{width:26px;height:26px;border-radius:4px;background:var(--brand);display:grid;place-items:center}
+.mark i{width:10px;height:10px;border:2.5px solid #fff;border-radius:50%}
+nav a{display:block;padding:8px 10px;border-radius:6px;color:#a7a59f;font-weight:500;border-left:2px solid transparent}nav a:hover{color:#fff;background:#23252a}
+nav a.on{color:#fff;background:#23252a;border-left-color:var(--brand)}
+.side-foot{position:absolute;bottom:18px;left:14px;right:14px;font-size:12px;color:#8d8b85;padding:0 6px}.tag{font-size:11px;color:#8d8b85;font-weight:500;letter-spacing:.02em;margin:-16px 6px 22px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 32px;border-bottom:1px solid var(--line);background:var(--panel)}
+.ws{display:flex;align-items:center;gap:10px;font-weight:600}.ws .muted{font-weight:400}
+.live{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--greenbg)}
+main{padding:28px 32px 56px;max-width:1180px}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:0 0 12px}
+.muted{color:var(--muted)}section{margin-top:28px;scroll-margin-top:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px}
+.cards{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px}
+.lab{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.big{font-size:30px;font-weight:700;margin:6px 0 2px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.big small{font-size:16px;color:var(--muted);font-weight:500}
+.status{display:flex;align-items:center;gap:10px}.status .big{color:var(--green)}.status.risk .big{color:var(--red)}
+.shield{width:34px;height:34px;border-radius:10px;background:var(--greenbg);display:grid;place-items:center;color:var(--green);font-weight:800}
+.risk .shield{background:var(--redbg);color:var(--red)}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--line)}
+.pill.green{background:var(--greenbg);color:var(--green)}.pill.red{background:var(--redbg);color:var(--red)}.pill.amber{background:var(--amberbg);color:var(--amber)}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+.f{border-top:1px solid var(--line)}.f:first-of-type{border-top:0}
+.f summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:78px 1fr 230px 110px;gap:12px;align-items:center;padding:13px 4px}
+.f summary::-webkit-details-marker{display:none}.f summary:hover{background:var(--bg)}
+.ft{font-weight:600}.asset{color:var(--muted);font:12px ui-monospace,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sev{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:6px;text-align:center}
+.sev.critical{background:var(--redbg);color:var(--red)}.sev.high{background:var(--amberbg);color:var(--amber)}.sev.medium{background:var(--brandbg);color:var(--brand)}
+.fd{padding:2px 4px 16px 94px}dl{display:grid;grid-template-columns:110px 1fr;gap:6px 14px;margin:0}dt{color:var(--muted)}dd{margin:0}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:12px 0 0;white-space:pre-wrap;word-break:break-word;color:var(--muted)}
+.tl{list-style:none;margin:0;padding:0}.tl li{display:flex;gap:12px;padding:0 0 16px;position:relative}
+.tl li:not(:last-child)::before{content:"";position:absolute;left:5px;top:16px;bottom:0;width:2px;background:var(--line)}
+.dot{width:12px;height:12px;border-radius:50%;margin-top:4px;flex:none}.dot.red{background:var(--red)}.dot.green{background:var(--green)}.dot.blue{background:var(--brand)}
+table{width:100%;border-collapse:collapse}td,th{padding:9px 6px;border-top:1px solid var(--line);text-align:left;vertical-align:top}th{border-top:0;color:var(--muted);font-weight:500;font-size:12px}
+.ints{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}.int{display:flex;justify-content:space-between;align-items:center}
+@media (max-width:900px){.app{grid-template-columns:1fr}aside{display:none}.cards,.grid2{grid-template-columns:1fr}
+.f summary{grid-template-columns:70px 1fr}.asset,.f summary .pill{display:none}.fd{padding-left:4px}main,header{padding-left:16px;padding-right:16px}}
+
+.crumb{color:var(--muted);font-size:13px;margin-bottom:6px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-block;padding:10px 16px;border-radius:6px;font-weight:600;border:1px solid var(--line);background:var(--panel)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn:hover{filter:brightness(.97)}
+.more{display:inline-block;margin-top:12px;color:var(--brand);font-weight:600}
+.sevbar{display:flex;gap:8px;margin:0 0 14px}
+/* landing */
+.lp{max-width:1120px;margin:0 auto;padding:0 24px}.top{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+.top nav{display:flex;gap:22px;align-items:center}.top nav a{color:var(--muted);font-weight:500}.top nav a:hover{color:var(--ink)}
+.brandrow{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.hero{padding:72px 0 56px;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+.eyebrow{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--brand);margin-bottom:14px}
+.hero h1{font-size:52px;line-height:1.05;letter-spacing:-.03em;margin:0 0 18px}.hero p{font-size:18px;color:var(--muted);margin:0 0 28px;max-width:540px}
+.proof{background:var(--side);color:#ecebe7;border-radius:10px;padding:24px}
+.proof .pr{display:flex;justify-content:space-between;align-items:baseline;padding:14px 0;border-bottom:1px solid #2a2b2f}
+.proof .pr:last-child{border-bottom:0}.proof b{font-size:30px;font-variant-numeric:tabular-nums}.proof span{color:#a7a59f;font-size:14px;max-width:60%}
+.proof .k{color:var(--brand);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.band{border-top:1px solid var(--line);padding:56px 0}.band h2{font-size:28px;letter-spacing:-.02em;margin:0 0 8px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:28px}.cols h3{margin:10px 0 6px;font-size:17px}.cols p{margin:0;color:var(--muted)}
+.num{font:700 13px ui-monospace,Consolas,monospace;color:var(--brand)}
+.feat{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:28px}
+.cta{background:var(--side);color:#ecebe7;border-radius:10px;padding:40px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.cta h2{color:#fff}.cta p{color:#a7a59f;margin:0}
+.foot{padding:28px 0 40px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+@media (max-width:900px){.hero{grid-template-columns:1fr;padding-top:40px}.hero h1{font-size:38px}.cols,.feat{grid-template-columns:1fr}.top nav a:not(.btn){display:none}}
+</style></head><body><div class="app">
+<aside><a class="logo" href="index.html"><span class="mark"><i></i></span>LeakHunter</a><div class="tag">Prove your data is safe.</div>
+<nav><a class="" href="overview.html">Overview</a><a class="on" href="findings.html">Findings</a><a class="" href="scans.html">Scan history</a><a class="" href="agents.html">Agent guard</a><a class="" href="integrations.html">Integrations</a></nav><div class="side-foot"><a href="index.html">&larr; Product site</a><br>Open source · MIT</div></aside>
+<div><header><div class="ws"><span class="live"></span>Snowflake <span class="muted">/ LEAKHUNTER</span></div>
+<div class="muted">Last scan 2026-10-02 15:14 · <span class="pill green">Scan complete</span></div></header>
+<main><div class="crumb">Workspace / Findings</div><h1>Findings</h1><p class="muted" style="margin:0 0 20px">Every leak an attack proved, grouped by root cause. Click a row for the evidence trail and the exact fix.</p><div class="sevbar"><span class="sev critical">2 Critical</span><span class="sev high">4 High</span><span class="sev medium">1 Medium</span></div><div class="panel"><details class="f"><summary>
+<span class="sev critical">Critical</span><span class="ft">Patient SSNs readable in clear text</span><span class="asset">DATA.PATIENTS.SSN</span><span class="pill green">Verified fixed</span></summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>A01 (library), G001 (Gemma)</dd>
+<dt>Policy</dt><dd>HIPAA Privacy Rule (minimum necessary)</dd>
+<dt>Remediation</dt><dd>Masking policy MASK_SSN on the column. Analysts see ***-**-1234.</dd>
+<dt>Verification</dt><dd>Attack re-run in scan #2: blocked.</dd>
+</dl><pre>ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN SSN SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_SSN;</pre></div></details><details class="f"><summary>
+<span class="sev critical">Critical</span><span class="ft">“Anonymized” patients re-identifiable with public Census data</span><span class="asset">DATA.PATIENT_DEMOGRAPHICS</span><span class="pill green">Verified fixed</span></summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>A03 (library)</dd>
+<dt>Policy</dt><dd>HIPAA de-identification standard (45 CFR 164.514)</dd>
+<dt>Remediation</dt><dd>ZIP generalized to 3 digits, birth date to year (MASK_ZIP, MASK_DOB). The Census join matches no one.</dd>
+<dt>Verification</dt><dd>Attack re-run in scan #2: blocked.</dd>
+</dl><pre>ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN ZIP SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_ZIP;
+ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN DOB SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_DOB;</pre></div></details><details class="f"><summary>
+<span class="sev high">High</span><span class="ft">Salaries readable next to employee names</span><span class="asset">DATA.EMPLOYEES.FULL_NAME</span><span class="pill green">Verified fixed</span></summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>A02 (library), G002 (Gemma)</dd>
+<dt>Policy</dt><dd>GDPR Art. 5(1)(f) integrity and confidentiality; state privacy law</dd>
+<dt>Remediation</dt><dd>Masking policy MASK_NAME on employee names. Salary averages still work.</dd>
+<dt>Verification</dt><dd>Attack re-run in scan #2: blocked.</dd>
+</dl><pre>ALTER TABLE LEAKHUNTER.DATA.EMPLOYEES MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;</pre></div></details><details class="f"><summary>
+<span class="sev high">High</span><span class="ft">Forgotten raw export of patient records</span><span class="asset">SCRATCH.PATIENTS_EXPORT_OLD</span><span class="pill green">Verified fixed</span></summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>A05 (library)</dd>
+<dt>Policy</dt><dd>HIPAA Privacy Rule (minimum necessary); GDPR Art. 32 security of processing</dd>
+<dt>Remediation</dt><dd>Analyst access to SCRATCH revoked; stale copy dropped.</dd>
+<dt>Verification</dt><dd>Attack re-run in scan #2: blocked.</dd>
+</dl><pre>REVOKE USAGE ON SCHEMA LEAKHUNTER.SCRATCH FROM ROLE LH_ANALYST;
+DROP TABLE IF EXISTS LEAKHUNTER.SCRATCH.PATIENTS_EXPORT_OLD;</pre></div></details><details class="f"><summary>
+<span class="sev high">High</span><span class="ft">Patient names joined to diagnoses</span><span class="asset">DATA.VISIT_DETAILS</span><span class="pill green">Verified fixed</span></summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>A06 (library), G003 (Gemma)</dd>
+<dt>Policy</dt><dd>HIPAA Privacy Rule (minimum necessary)</dd>
+<dt>Remediation</dt><dd>Masking policy MASK_NAME on patient names. Diagnoses stay usable.</dd>
+<dt>Verification</dt><dd>Attack re-run in scan #2: blocked.</dd>
+</dl><pre>ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;</pre></div></details><details class="f"><summary>
+<span class="sev high">High</span><span class="ft">SSN columns found outside the known inventory</span><span class="asset">All analyst-readable tables</span><span class="pill green">Verified fixed</span></summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>A07 (library)</dd>
+<dt>Policy</dt><dd>HIPAA Privacy Rule (minimum necessary)</dd>
+<dt>Remediation</dt><dd>Closed by the SSN mask and the SCRATCH revoke above.</dd>
+<dt>Verification</dt><dd>Attack re-run in scan #2: blocked.</dd>
+</dl><pre>REVOKE USAGE ON SCHEMA LEAKHUNTER.SCRATCH FROM ROLE LH_ANALYST;
+DROP TABLE IF EXISTS LEAKHUNTER.SCRATCH.PATIENTS_EXPORT_OLD;
+ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN SSN SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_SSN;</pre></div></details><details class="f"><summary>
+<span class="sev medium">Medium</span><span class="ft">HR performance reviews reachable through a role grant</span><span class="asset">Role LH_HR → LH_ANALYST</span><span class="pill green">Verified fixed</span></summary>
+<div class="fd"><dl>
+<dt>Detected by</dt><dd>A04 (library), G004 (Gemma)</dd>
+<dt>Policy</dt><dd>GDPR Art. 32 security of processing; least privilege</dd>
+<dt>Remediation</dt><dd>Role grant revoked (least privilege).</dd>
+<dt>Verification</dt><dd>Attack re-run in scan #2: blocked.</dd>
+</dl><pre>REVOKE ROLE LH_HR FROM ROLE LH_ANALYST;</pre></div></details></div></main></div></div></body></html>

@@ -6,7 +6,7 @@
                                         view, the rewrite PASSes   [--merge applies the PASS, --cleanup removes it]
   python demo/run_demo.py round         one referee round (attacks + legit queries) -> scoreboard row
   python demo/run_demo.py scoreboard    open the Streamlit scoreboard
-  python demo/run_demo.py showcase      rebuild report/dashboard.html from live data and open it
+  python demo/run_demo.py showcase      rebuild the site (landing page + dashboard) from live data and open it
   python demo/run_demo.py all           doctor, round, agent (no merge)
   python demo/run_demo.py loop          full proof, end to end: reset, plant all leaks, round (leaks), defender
                                         fixes, round (re-check: 0 leaks, legit all pass), audit report, dashboard
@@ -159,12 +159,12 @@ def loop() -> int:
              (["-m", "defender.apply_fixes"], "DEFEND: pii-guardian playbook fixes, logged to RESULTS.FIXES"),
              (["-m", "referee.run_round"], "ROUND 2: re-check (expect 0 leaks, legit all pass)"),
              (["-m", "report.generate"], "audit report -> report/audit_report.md"),
-             (["-m", "report.dashboard"], "dashboard -> report/dashboard.html")]
+             (["-m", "report.dashboard"], "dashboard -> site/index.html")]
     for cmd, title in steps:
         if run(cmd, title):
             print(f"\n  STOPPED at: {title}")
             return 1
-    print("\n  Done. Open report/dashboard.html, or: python demo/run_demo.py scoreboard")
+    print("\n  Done. Open site/index.html, or: python demo/run_demo.py scoreboard")
     return 0
 
 
@@ -210,7 +210,7 @@ def main() -> int:
     if args.command == "showcase":
         import webbrowser
         code = run(["-m", "report.dashboard"], "build dashboard")
-        webbrowser.open((ROOT / "report" / "dashboard.html").as_uri())
+        webbrowser.open((ROOT / "site" / "index.html").as_uri())
         return code
     if args.command == "agent":
         return agent(args)

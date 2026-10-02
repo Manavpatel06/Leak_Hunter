@@ -6,7 +6,7 @@ Built at sunhacks Hack Day 2026 (MLH Hacktoberfest) · MIT licensed
 
 ![LeakHunter results dashboard](docs/dashboard.png)
 
-> Open [`report/dashboard.html`](report/dashboard.html) in any browser to see the results of our last full run.
+> Open [`site/index.html`](site/index.html) in any browser: our product page and a multi-page dashboard (overview, findings, scan history, agent guard, integrations) built from our last full run.
 
 ---
 
@@ -64,7 +64,7 @@ python -m setup.generate_data          # synthetic warehouse
 python demo/run_demo.py loop           # plant leaks, attack, fix, re-check, report, dashboard
 ```
 
-Then open `report/dashboard.html`. Other useful commands:
+Then open `site/index.html`. Other useful commands:
 
 | Command | What it does |
 |---|---|
