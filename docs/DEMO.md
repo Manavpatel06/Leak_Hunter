@@ -16,7 +16,9 @@ Before judges arrive: `python -m setup.reset && python -m setup.plant_leaks --al
 
 ## Change Firewall beat (optional ~90 s, after the Re-check beat; this is the "agents are coming" answer)
 
-Setup once: `python -m firewall.selftest` must say ALL PASSED. Have `firewall/examples/` open in an editor.
+Setup once: `python demo/run_demo.py doctor` must say READY and `python -m firewall.selftest` ALL PASSED. Have
+`firewall/examples/` open in an editor. **Whole beat in one command:** `python demo/run_demo.py agent` (add `--merge --cleanup`
+to really apply the PASS and remove the demo view; add `--sample` if Ollama is not running).
 
 | Time | Beat |
 |---|---|

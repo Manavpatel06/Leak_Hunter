@@ -26,7 +26,10 @@ import argparse
 import json
 import re
 import sys
+import threading
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from leakhunter import db
@@ -50,7 +53,6 @@ _CREATE_OBJ = re.compile(
     r"(VIEW|TABLE)\s+(?:IF\s+NOT\s+EXISTS\s+)?([\w.\"$]+)", re.I)
 _ACCOUNT_SCOPE = re.compile(r"^(GRANT|REVOKE)\s+ROLE\b|\bON\s+(ACCOUNT|DATABASE|WAREHOUSE|INTEGRATION|USER|ROLE)\b", re.I)
 _SCHEMA_REF = re.compile(rf'\b{DB}\s*\.\s*"?(\w+)"?', re.I)
-_CLONE_REF = re.compile(rf'\b{DB}\s*\.\s*"?({"|".join(SANDBOXED)})"?\b', re.I)
 
 
 # ---------------------------------------------------------------- parsing
@@ -139,23 +141,75 @@ def classify(stmt: str) -> dict:
     return info
 
 
+# ---------------------------------------------------------------- connections
+
+class LazyConn:
+    """A Snowflake connection opened on first use. prefetch() starts connecting in the background so the ~3 s
+    login overlaps with other work, and a change that is blocked early never pays for a connection it did not use."""
+
+    def __init__(self, role: str):
+        self.role, self._conn, self._thread, self._err, self._used = role, None, None, None, False
+        self._lock = threading.Lock()
+
+    def _open(self) -> None:
+        try:
+            self._conn = db.connect(self.role)
+        except Exception as e:
+            self._err = e
+
+    def prefetch(self) -> "LazyConn":
+        with self._lock:
+            if self._conn is None and self._thread is None:
+                self._thread = threading.Thread(target=self._open, daemon=True)
+                self._thread.start()
+        return self
+
+    def get(self):
+        self._used = True
+        self.prefetch()
+        self._thread.join()
+        if self._err:
+            raise self._err
+        return self._conn
+
+    def close(self) -> None:
+        if self._thread is not None and (self._used or not self._thread.is_alive()):
+            self._thread.join()  # never wait on a login nobody needed (change blocked before cloning)
+        if self._conn is not None:
+            self._conn.close()
+
+
+def _get(conn):
+    return conn.get() if isinstance(conn, LazyConn) else conn
+
+
 # ---------------------------------------------------------------- sandbox
 
-class Sandbox:
-    """Throwaway clones of the sandboxed schemas inside LEAKHUNTER."""
+def needed_schemas(stmts: list[dict]) -> list[str]:
+    """DATA always (canary + default schema), plus any other sandboxed schema the change names."""
+    names = {"DATA"}
+    for s in stmts:
+        names |= {m.group(1).upper() for m in _SCHEMA_REF.finditer(s["sql"]) if m.group(1).upper() in SANDBOXED}
+    return sorted(names)
 
-    def __init__(self, admin, role: str, tag: str | None = None):
+
+class Sandbox:
+    """Throwaway zero-copy clones, inside LEAKHUNTER, of only the schemas the change touches.
+    Attacks that read other schemas run against production unchanged, which is safe because the change cannot
+    modify a schema it never references."""
+
+    def __init__(self, admin, role: str, schemas: list[str] | None = None, tag: str | None = None):
         self.admin, self.role = admin, role
         self.tag = tag or uuid.uuid4().hex[:8].upper()
-        self.names = {s: f"FW_{self.tag}_{s}" for s in SANDBOXED}
+        self.names = {s: f"FW_{self.tag}_{s}" for s in (schemas or SANDBOXED)}
+        self._ref = re.compile(rf'\b{DB}\s*\.\s*"?({"|".join(self.names)})"?\b', re.I)
         self.created = False
 
     def rewrite(self, sql: str) -> str:
-        return _CLONE_REF.sub(lambda m: f"{DB}.{self.names[m.group(1).upper()]}", sql)
+        return self._ref.sub(lambda m: f"{DB}.{self.names[m.group(1).upper()]}", sql)
 
     def fqn(self, schema: str, obj: str) -> str:
-        return f'{DB}.{self.names[schema]}."{obj}"' if not re.fullmatch(r"\w+", obj) else \
-            f"{DB}.{self.names[schema]}.{obj}"
+        return f"{DB}.{self.names[schema]}.{obj}"
 
     def create(self) -> None:
         self.created = True
@@ -193,11 +247,12 @@ def attack_set() -> list[dict]:
     return [a for a in run_attacks.load_attacks() if a.get("technique") not in ("sweep", "chatbot")]
 
 
-def run_library(analyst, sandbox: Sandbox, attacks: list[dict]) -> list[dict]:
+def run_library(analyst, sandbox: Sandbox | None, attacks: list[dict]) -> list[dict]:
+    """Run the attacks as the analyst. sandbox=None runs them as written (production baseline)."""
     rows = []
     for a in attacks:
-        clone_attack = {**a, "sql": sandbox.rewrite(a.get("sql", ""))}
-        r = run_attacks.run_attack(analyst, clone_attack)
+        sql = sandbox.rewrite(a.get("sql", "")) if sandbox else a.get("sql", "")
+        r = run_attacks.run_attack(analyst, {**a, "sql": sql})
         rows.append({"id": a["id"], "goal": a.get("goal", ""), "technique": a.get("technique", ""),
                      "sql": r["sql"], "succeeded": r["succeeded"], "evidence": r["evidence"], "error": r["error"]})
     return rows
@@ -206,8 +261,7 @@ def run_library(analyst, sandbox: Sandbox, attacks: list[dict]) -> list[dict]:
 def probe_object(analyst, sandbox: Sandbox, schema: str, obj: str) -> tuple[list[dict], dict]:
     """Read the new object as the analyst and run every probe on it."""
     prod_name = f"{DB}.{schema}.{obj}"
-    clone_name = sandbox.fqn(schema, obj)
-    sql = f"SELECT * FROM {clone_name} LIMIT {PROBE_ROWS}"
+    sql = f"SELECT * FROM {sandbox.fqn(schema, obj)} LIMIT {PROBE_ROWS}"
     try:
         cols, rows = db.query(analyst, sql)
     except Exception as e:
@@ -225,25 +279,50 @@ def _log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
+def _log_bouncer(admin, pk: dict, submitted_by: str, notes: list[str]) -> None:
+    """Every package Bouncer looked at goes to RESULTS.BOUNCER_LOG, so it shows on the scoreboard."""
+    by = submitted_by if submitted_by in ("coco", "gemma", "claude", "human") else "human"
+    for r in pk.get("checked", []):
+        b = r.get("bouncer")
+        if not b:
+            continue
+        try:
+            db.log_bouncer(admin, package=r["name"], verdict=b["verdict"], reasons="; ".join(b["reasons"]),
+                           requested_by=by)
+        except Exception as e:
+            notes.append(f"bouncer log not saved: {str(e).splitlines()[0][:100]}")
+            return
+
+
 def check_change(sql: str, admin, analyst, *, role: str = db.ANALYST, merge: bool = False, keep: bool = False,
-                 submitted_by: str = "coco", parent_id: str = "", log=_log) -> dict:
-    """Run the whole firewall on one proposed change. Never raises: errors become verdict ERROR."""
+                 submitted_by: str = "coco", parent_id: str = "", bouncer: bool = True, log=_log) -> dict:
+    """Run the whole firewall on one proposed change. Never raises: errors become verdict ERROR.
+    `admin` / `analyst` may be live connections or LazyConn objects."""
     result = {"change_id": uuid.uuid4().hex[:12], "parent_id": parent_id, "verdict": "BLOCK", "merged": False,
               "findings": [], "packages": {}, "statements": 0, "attacks_run": 0, "preexisting_leaks": [],
-              "attack_path": [], "feedback": {}, "notes": []}
-    sandbox = Sandbox(admin, role)
+              "attack_path": [], "feedback": {}, "notes": [], "timings": {}}
+    sandbox: Sandbox | None = None
     stmts: list[dict] = []
+    t0 = last = time.time()
+
+    def lap(name: str) -> None:
+        nonlocal last
+        now = time.time()
+        result["timings"][name] = round(now - last, 1)
+        last = now
+
     try:
-        # 0. Package Guard
-        log("[0/6] Package Guard")
-        pk = package_guard.check_sql(sql)
+        # 0-1. Package Guard (policy + Bouncer's live PyPI check) and the static check: no clone yet
+        log("[0/6] Package Guard + Bouncer")
+        if isinstance(admin, LazyConn):
+            admin.prefetch()  # the login overlaps with the PyPI lookups
+        pk = package_guard.check_sql(sql, use_bouncer=bouncer)
         result["packages"] = pk
         for p in pk["problems"]:
             result["findings"].append({"kind": "package_" + p["status"], "blocking": True, "object": p["name"],
                                        "detail": p["detail"], "evidence": "",
                                        "fix": "Remove it or use an approved package (firewall/packages.yaml)."})
-
-        # 1. Static check
+        lap("packages")
         log("[1/6] Static check")
         stmts.extend(classify(s) for s in split_statements(sql))
         result["statements"] = len(stmts)
@@ -255,30 +334,39 @@ def check_change(sql: str, admin, analyst, *, role: str = db.ANALYST, merge: boo
                 result["findings"].append({"kind": s["kind"], "blocking": True, "object": s["sql"][:80],
                                            "detail": s["reason"], "evidence": "",
                                            "fix": "Split this out and ask a human to apply it."})
-        if result["findings"]:  # fail fast: nothing was cloned, nothing ran
+        lap("static")
+        if result["findings"]:  # fail fast: nothing cloned, the attacker connection is never opened
             result["notes"].append("blocked before cloning")
             return result
 
-        # 2-3. Clone + baseline
-        log("[2/6] Cloning schemas (zero-copy)")
-        sandbox.create()
-        note = sandbox.add_canary()
+        if isinstance(analyst, LazyConn):
+            analyst.prefetch()
+        adm = _get(admin)
+        sandbox = Sandbox(adm, role, needed_schemas(stmts))
+
+        # 2-3. Baseline on production runs concurrently while the clone is built
+        attacks = attack_set()
+        log(f"[2/6] Cloning {', '.join(sandbox.names)} (zero-copy) while running {len(attacks)} baseline attacks")
+        ana = _get(analyst)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            baseline = pool.submit(run_library, ana, None, attacks)
+            sandbox.create()
+            note = sandbox.add_canary()
+            before = {r["id"]: r for r in baseline.result()}
         if note:
             result["notes"].append(note)
-        attacks = attack_set()
-        log(f"[3/6] Baseline: {len(attacks)} attacks on the clone before the change")
-        before = {r["id"]: r for r in run_library(analyst, sandbox, attacks)}
+        lap("clone+baseline")
 
         # 4. Apply the change to the clone
         log("[4/6] Applying the change to the clone")
-        db.query(admin, f"USE SCHEMA {DB}.{sandbox.names['DATA']}")
+        db.query(adm, f"USE SCHEMA {DB}.{sandbox.names['DATA']}")
         created = []
         for s in stmts:
             if s["scope"] == "account":
                 result["notes"].append(f"skipped in sandbox (account-wide, pass-through on merge): {s['sql'][:60]}")
                 continue
             try:
-                db.query(admin, sandbox.rewrite(s["sql"]))
+                db.query(adm, sandbox.rewrite(s["sql"]))
             except Exception as e:
                 result["findings"].append({
                     "kind": "change_failed", "blocking": True, "object": s["sql"][:80],
@@ -290,18 +378,19 @@ def check_change(sql: str, admin, analyst, *, role: str = db.ANALYST, merge: boo
         for kind, schema, obj in created:
             if schema in sandbox.names:
                 try:
-                    db.query(admin, f"GRANT SELECT ON {kind} {sandbox.fqn(schema, obj)} TO ROLE {role}")
+                    db.query(adm, f"GRANT SELECT ON {kind} {sandbox.fqn(schema, obj)} TO ROLE {role}")
                 except Exception as e:
                     result["notes"].append(f"could not grant {role} on {obj}: {str(e).splitlines()[0][:100]}")
+        lap("apply")
 
-        # 5. Attack
+        # 5. Attack the clone as the analyst
         log(f"[5/6] Attacking as {role}")
-        after = run_library(analyst, sandbox, attacks)
+        after = run_library(ana, sandbox, attacks)
         result["attacks_run"] = len(after)
         for r in after:
-            step = {"step": "library_attack", "attack_id": r["id"], "goal": r["goal"], "sql": r["sql"],
-                    "succeeded": r["succeeded"], "evidence": r["evidence"], "error": r["error"]}
-            result["attack_path"].append(step)
+            result["attack_path"].append({"step": "library_attack", "attack_id": r["id"], "goal": r["goal"],
+                                          "sql": r["sql"], "succeeded": r["succeeded"],
+                                          "evidence": r["evidence"], "error": r["error"]})
             if r["succeeded"] and not before[r["id"]]["succeeded"]:
                 result["findings"].append({
                     "kind": "new_leak", "blocking": True, "object": r["id"],
@@ -311,12 +400,12 @@ def check_change(sql: str, admin, analyst, *, role: str = db.ANALYST, merge: boo
             elif r["succeeded"]:
                 result["preexisting_leaks"].append(r["id"])
         for kind, schema, obj in created:
-            if schema not in sandbox.names:
-                continue
-            found, step = probe_object(analyst, sandbox, schema, obj)
-            result["attack_path"].append({"step": "object_probe", **step})
-            result["findings"] += found
-            result["attacks_run"] += probes.PROBE_COUNT
+            if schema in sandbox.names:
+                found, step = probe_object(ana, sandbox, schema, obj)
+                result["attack_path"].append({"step": "object_probe", **step})
+                result["findings"] += found
+                result["attacks_run"] += probes.PROBE_COUNT
+        lap("attack")
         return result
     except Exception as e:  # the firewall must never fail open
         result["verdict"] = "ERROR"
@@ -325,9 +414,16 @@ def check_change(sql: str, admin, analyst, *, role: str = db.ANALYST, merge: boo
                                    "evidence": "", "fix": "Ask a human; the change was NOT applied."})
         return result
     finally:
-        if not keep:
-            sandbox.drop()
-        _finish(result, sql, stmts, admin, merge, submitted_by, log)
+        try:
+            adm = _get(admin)
+        except Exception as e:
+            result["notes"].append(f"no admin connection, change NOT recorded: {e}")
+        else:
+            if sandbox and not keep:
+                sandbox.drop()
+            _log_bouncer(adm, result["packages"], submitted_by, result["notes"])
+            _finish(result, sql, stmts, adm, merge, submitted_by, log)
+        result["timings"]["total"] = round(time.time() - t0, 1)
 
 
 def _finish(result: dict, sql: str, stmts: list[dict], admin, merge: bool, submitted_by: str, log) -> None:
@@ -349,17 +445,20 @@ def _finish(result: dict, sql: str, stmts: list[dict], admin, merge: bool, submi
         except Exception as e:
             result["notes"].append(f"merge failed after PASS: {str(e).splitlines()[0][:200]}")
             result["feedback"]["merge_error"] = result["notes"][-1]
+    insert = (f"INSERT INTO {DB}.RESULTS.CHANGE_AUDIT (CHANGE_ID, PARENT_ID, SUBMITTED_BY, CHANGE_SQL, VERDICT, "
+              f"MERGED, ATTACKS_RUN, FINDINGS, PACKAGES) VALUES (%(id)s, %(parent)s, %(by)s, %(sql)s, %(v)s, "
+              f"%(m)s, %(n)s, %(f)s, %(p)s)")
+    row = {"id": result["change_id"], "parent": result["parent_id"], "by": submitted_by, "sql": sql,
+           "v": result["verdict"], "m": result["merged"], "n": result["attacks_run"],
+           "f": json.dumps({"findings": result["findings"], "attack_path": result["attack_path"],
+                            "preexisting_leaks": result["preexisting_leaks"]}),
+           "p": ", ".join(c["name"] for c in result["packages"].get("checked", []))}
     try:
-        db.query(admin, AUDIT_DDL)
-        db.query(admin,
-                 f"INSERT INTO {DB}.RESULTS.CHANGE_AUDIT (CHANGE_ID, PARENT_ID, SUBMITTED_BY, CHANGE_SQL, VERDICT, "
-                 f"MERGED, ATTACKS_RUN, FINDINGS, PACKAGES) VALUES (%(id)s, %(parent)s, %(by)s, %(sql)s, %(v)s, "
-                 f"%(m)s, %(n)s, %(f)s, %(p)s)",
-                 {"id": result["change_id"], "parent": result["parent_id"], "by": submitted_by, "sql": sql,
-                  "v": result["verdict"], "m": result["merged"], "n": result["attacks_run"],
-                  "f": json.dumps({"findings": result["findings"], "attack_path": result["attack_path"],
-                                   "preexisting_leaks": result["preexisting_leaks"]}),
-                  "p": ", ".join(c["name"] for c in result["packages"].get("checked", []))})
+        try:
+            db.query(admin, insert, row)
+        except Exception:  # first use: the table does not exist yet
+            db.query(admin, AUDIT_DDL)
+            db.query(admin, insert, row)
     except Exception as e:
         result["notes"].append(f"audit record not saved: {str(e).splitlines()[0][:120]}")
 
@@ -375,12 +474,17 @@ def render(result: dict) -> str:
         if f["evidence"]:
             lines.append(f"      evidence: {f['evidence']}")
         lines.append(f"      fix: {f['fix']}")
+    for p in result["packages"].get("checked", []):
+        if p.get("bouncer"):
+            lines.append(f"  bouncer: {p['name']} -> {p['bouncer']['verdict']} ({p['bouncer']['reasons'][0]})")
     if result["verdict"] == "PASS":
         lines.append(f"  ok: {result['attacks_run']} attacks and probes found nothing new")
     if result["preexisting_leaks"]:
         lines.append(f"  note: leaks already present before this change (not blamed on it): "
                      f"{', '.join(result['preexisting_leaks'])}")
     lines += [f"  note: {n}" for n in result["notes"]]
+    if result.get("timings"):
+        lines.append("  time: " + ", ".join(f"{k} {v}s" for k, v in result["timings"].items()))
     return "\n".join(lines)
 
 
@@ -391,16 +495,17 @@ def main() -> None:
     src.add_argument("--sql", help="the proposed SQL change as a string")
     ap.add_argument("--merge", action="store_true", help="on PASS, apply the change to production")
     ap.add_argument("--json", action="store_true", help="print the full verdict as JSON (for CoCo)")
+    ap.add_argument("--no-bouncer", action="store_true", help="skip Bouncer's live PyPI lookups (offline)")
     ap.add_argument("--keep", action="store_true", help="keep the clone schemas for inspection")
     ap.add_argument("--submitted-by", default="coco")
     ap.add_argument("--parent-id", default="", help="CHANGE_ID of the BLOCKed attempt this one rewrites")
     args = ap.parse_args()
     sql = Path(args.sql_file).read_text(encoding="utf-8") if args.sql_file else args.sql
 
-    admin, analyst = db.connect(db.ADMIN), db.connect(db.ANALYST)
+    admin, analyst = LazyConn(db.ADMIN).prefetch(), LazyConn(db.ANALYST).prefetch()  # both logins start now
     try:
         result = check_change(sql, admin, analyst, merge=args.merge, keep=args.keep,
-                              submitted_by=args.submitted_by, parent_id=args.parent_id)
+                              submitted_by=args.submitted_by, parent_id=args.parent_id, bouncer=not args.no_bouncer)
     finally:
         admin.close()
         analyst.close()

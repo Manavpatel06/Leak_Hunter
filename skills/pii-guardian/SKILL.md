@@ -55,8 +55,9 @@ then lets you merge. Never run such a change on production yourself.
    - **ERROR**: the firewall failed closed. Do not apply the change; tell a human.
 4. Role grants (`GRANT ROLE ...`), account-wide grants and statements that touch schemas outside
    `DATA`, `SCRATCH`, `GOVERNANCE` are always BLOCKed for human review. Do not try to get around that.
-5. Package Guard runs inside the firewall. If it BLOCKs a package, use an approved one from
-   `firewall/packages.yaml`; do not rename or vendor a blocked package to slip past it.
+5. Package Guard and Bouncer (`skills/bouncer`) run inside the firewall. If a package is BLOCKed (not approved, invented,
+   look-alike, or network access), use an approved one from `firewall/packages.yaml`; do not rename or vendor a blocked
+   package to slip past it. Before `pip install` anything on your own machine, run the Bouncer skill first.
 
 A PASS means "not breakable by these attacks", not "provably safe". Say so when you report it.
 

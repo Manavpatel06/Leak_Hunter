@@ -48,12 +48,12 @@ class FakeWarehouse:
                 and "RESULTS" not in q]
 
 
-def run_gate(sql: str, view_rows, merge=False):
+def run_gate(sql: str, view_rows, merge=False, bouncer=False):
     fake = FakeWarehouse(view_rows)
     real = db.query
     db.query = fake.query
     try:
-        res = leakcheck.check_change(sql, object(), object(), merge=merge, log=lambda m: None)
+        res = leakcheck.check_change(sql, object(), object(), merge=merge, bouncer=bouncer, log=lambda m: None)
     finally:
         db.query = real
     return res, fake
@@ -105,14 +105,14 @@ def main() -> None:
     check("DEPARTMENT_NAME is not a person name", not probes.find_names("V", ["DEPARTMENT_NAME"], [("ER",)]))
 
     print("package guard")
-    pg = package_guard.check_sql((EX / "bad_package.sql").read_text(encoding="utf-8"))
+    pg = package_guard.check_sql((EX / "bad_package.sql").read_text(encoding="utf-8"), use_bouncer=False)
     names = {p["name"]: p["status"] for p in pg["problems"]}
     check("typosquat 'pandsa' caught", names.get("pandsa") == "typosquat", str(names))
     check("socket import denied", names.get("socket") == "denied", str(names))
     check("egress integration flagged", any(s == "egress" for s in names.values()), str(names))
     check("numpy approved", "numpy" not in names)
-    check("clean SQL passes", package_guard.check_sql("CREATE VIEW V AS SELECT 1")["verdict"] == "PASS")
-    check("requirements check", package_guard.check_requirements("pandas==2.0\nrequestz\n")["verdict"] == "BLOCK")
+    check("clean SQL passes", package_guard.check_sql("CREATE VIEW V AS SELECT 1", use_bouncer=False)["verdict"] == "PASS")
+    check("requirements check", package_guard.check_requirements("pandas==2.0\nrequestz\n", use_bouncer=False)["verdict"] == "BLOCK")
 
     print("gate: bad view")
     bad, fake = run_gate((EX / "bad_patient_analytics.sql").read_text(encoding="utf-8"), row_level(), merge=True)
@@ -123,7 +123,9 @@ def main() -> None:
     check("attack path recorded", any(s.get("step") == "object_probe" for s in bad["attack_path"]))
     check("production untouched", not any(re.match(r"(CREATE|GRANT|ALTER)", q, re.I) and "FW_" not in q
                                           and "CHANGE_AUDIT" not in q for q in fake.log), str(fake.on_prod()))
-    check("clone dropped", sum("DROP SCHEMA" in q for q in fake.log) == 3)
+    check("only the schema the change needs is cloned and dropped",
+          sum("CREATE SCHEMA" in q for q in fake.log) == 1 and sum("DROP SCHEMA" in q for q in fake.log) == 1,
+          str([q for q in fake.log if "SCHEMA" in q]))
     check("audit row written", any("INSERT INTO LEAKHUNTER.RESULTS.CHANGE_AUDIT" in q for q in fake.log))
 
     print("gate: rewritten view")
@@ -142,6 +144,19 @@ def main() -> None:
     role, fake = run_gate("GRANT ROLE LH_HR TO ROLE LH_ANALYST", aggregated())
     check("role grant -> BLOCK, nothing cloned", role["verdict"] == "BLOCK" and not any("CLONE" in q for q in fake.log))
 
+    print("bouncer integration")
+    package_guard._bouncer_cache["pandsa"] = {"verdict": "BLOCK", "reasons": ["does not exist on PyPI: likely invented"]}
+    package_guard._bouncer_cache["pandas"] = {"verdict": "ALLOW", "reasons": ["established package"]}
+    bsql = "CREATE FUNCTION F() RETURNS INT LANGUAGE PYTHON RUNTIME_VERSION='3.11' PACKAGES=('pandsa','pandas') HANDLER='f' AS $$def f(): return 1$$"
+    pk = package_guard.check_sql(bsql)
+    st = {r["name"]: r["status"] for r in pk["checked"]}
+    check("typosquat of approved + not on PyPI -> invented", st.get("pandsa") == "invented", str(st))
+    check("approved package skips Bouncer (no network)", "bouncer" not in next(r for r in pk["checked"] if r["name"] == "pandas"))
+    bad, fake = run_gate(bsql, aggregated(), bouncer=True)
+    check("firewall blocks on Bouncer verdict before cloning", bad["verdict"] == "BLOCK" and not any("CLONE" in q for q in fake.log))
+    check("Bouncer verdict logged to BOUNCER_LOG", any("BOUNCER_LOG" in q for q in fake.log))
+    check("render shows Bouncer evidence", "bouncer: pandsa -> BLOCK" in leakcheck.render(bad))
+
     print("gate: failure modes")
 
     def boom(conn, sql, params=None):
@@ -150,7 +165,7 @@ def main() -> None:
         return [], []
     real, db.query = db.query, boom
     try:
-        err = leakcheck.check_change("CREATE VIEW V AS SELECT 1", object(), object(), log=lambda m: None)
+        err = leakcheck.check_change("CREATE VIEW V AS SELECT 1", object(), object(), bouncer=False, log=lambda m: None)
     finally:
         db.query = real
     check("clone failure fails closed (never PASS)", err["verdict"] == "ERROR" and not err["merged"], err["verdict"])

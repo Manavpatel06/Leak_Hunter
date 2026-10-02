@@ -6,6 +6,10 @@ Runs as step 0 of leakcheck, before any clone is made. Catches:
   - denied packages / stdlib modules that can move data out (socket, paramiko, ...)
   - IMPORTS = (...) from a stage (unreviewed code) and EXTERNAL_ACCESS_INTEGRATIONS (network egress)
 
+Bouncer (skills/bouncer) adds live PyPI evidence for any package the policy does not already approve:
+invented names (slopsquatting), look-alikes, brand-new packages, known vulnerabilities. Approved packages
+skip the network, so the common case is instant.
+
 Run:  python -m firewall.package_guard --sql-file change.sql
       python -m firewall.package_guard --requirements requirements.txt
 Exit code 0 = PASS, 2 = BLOCK.
@@ -13,14 +17,17 @@ Exit code 0 = PASS, 2 = BLOCK.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
 
 POLICY_FILE = Path(__file__).with_name("packages.yaml")
+BOUNCER_FILE = Path(__file__).resolve().parents[1] / "skills" / "bouncer" / "scripts" / "check.py"
 _STDLIB = set(getattr(sys, "stdlib_module_names", ()))
 
 
@@ -59,6 +66,31 @@ def judge_package(name: str, policy: dict) -> dict:
     return {"name": n, "status": "unapproved", "detail": "not on the approved package list"}
 
 
+_bouncer_mod = None
+_bouncer_cache: dict[str, dict] = {}
+
+
+def _bouncer():
+    """Load skills/bouncer/scripts/check.py (stdlib-only) once."""
+    global _bouncer_mod
+    if _bouncer_mod is None:
+        spec = importlib.util.spec_from_file_location("bouncer_check", BOUNCER_FILE)
+        _bouncer_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_bouncer_mod)
+    return _bouncer_mod
+
+
+def bouncer_check(names: list[str]) -> dict[str, dict]:
+    """Ask Bouncer (PyPI metadata: exists? new? look-alike? vulnerable?) about each name, in parallel, cached."""
+    todo = [n for n in dict.fromkeys(names) if n not in _bouncer_cache]
+    if todo:
+        check = _bouncer().check
+        with ThreadPoolExecutor(max_workers=min(8, len(todo))) as pool:
+            for n, res in zip(todo, pool.map(check, todo)):
+                _bouncer_cache[n] = res
+    return {n: _bouncer_cache[n] for n in dict.fromkeys(names)}
+
+
 def _quoted(text: str) -> list[str]:
     return [a or b for a, b in re.findall(r"'([^']*)'|\"([^\"]*)\"", text)]
 
@@ -80,10 +112,27 @@ def extract(sql: str) -> dict:
     return {"packages": packages, "imports": imports, "egress": egress, "modules": modules}
 
 
-def check_sql(sql: str, policy: dict | None = None) -> dict:
+def _add_bouncer(results: list[dict], bouncer: dict[str, dict]) -> None:
+    """Fold Bouncer's PyPI verdict into the policy verdict for packages the policy did not already approve."""
+    for r in results:
+        b = bouncer.get(r["name"])
+        if b is None:
+            continue
+        r["bouncer"] = {"verdict": b["verdict"], "reasons": b["reasons"]}
+        if b["verdict"] == "BLOCK" and r["status"] in ("unapproved", "typosquat"):
+            r["status"] = "invented"
+            r["detail"] = "Bouncer: " + b["reasons"][0]
+        elif r["status"] == "unapproved" and b["verdict"] in ("WARN", "BLOCK"):
+            r["detail"] += "; Bouncer: " + b["reasons"][0]
+
+
+def check_sql(sql: str, policy: dict | None = None, *, use_bouncer: bool = True) -> dict:
+    """Policy check, plus Bouncer's PyPI check for every package the policy does not already approve."""
     policy = policy or load_policy()
     found = extract(sql)
     results = [judge_package(p, policy) for p in found["packages"]]
+    if use_bouncer:
+        _add_bouncer(results, bouncer_check([r["name"] for r in results if r["status"] != "ok"]))
     for mod in found["modules"]:
         low = mod.lower()
         if low in policy["denied_modules"]:
@@ -100,10 +149,12 @@ def check_sql(sql: str, policy: dict | None = None) -> dict:
     return {"verdict": "BLOCK" if bad else "PASS", "checked": results, "problems": bad}
 
 
-def check_requirements(text: str, policy: dict | None = None) -> dict:
+def check_requirements(text: str, policy: dict | None = None, *, use_bouncer: bool = True) -> dict:
     policy = policy or load_policy()
     names = [ln.split("#")[0].strip() for ln in text.splitlines()]
     results = [judge_package(n, policy) for n in names if n]
+    if use_bouncer:
+        _add_bouncer(results, bouncer_check([r["name"] for r in results if r["status"] != "ok"]))
     bad = [r for r in results if r["status"] != "ok"]
     return {"verdict": "BLOCK" if bad else "PASS", "checked": results, "problems": bad}
 
@@ -112,11 +163,13 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sql-file")
     ap.add_argument("--requirements")
+    ap.add_argument("--no-bouncer", action="store_true", help="policy list only, no PyPI lookups")
     args = ap.parse_args()
+    bouncer = not args.no_bouncer
     if args.sql_file:
-        out = check_sql(Path(args.sql_file).read_text(encoding="utf-8"))
+        out = check_sql(Path(args.sql_file).read_text(encoding="utf-8"), use_bouncer=bouncer)
     elif args.requirements:
-        out = check_requirements(Path(args.requirements).read_text(encoding="utf-8"))
+        out = check_requirements(Path(args.requirements).read_text(encoding="utf-8"), use_bouncer=bouncer)
     else:
         ap.error("give --sql-file or --requirements")
     print(json.dumps(out, indent=2))

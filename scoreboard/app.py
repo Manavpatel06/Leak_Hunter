@@ -16,7 +16,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from leakhunter import db  # noqa: E402
 
-REFRESH = "3s"
+REFRESH = "5s"  # each refresh is a few small queries; 5 s keeps the warehouse from running flat out
 RED, GREEN, GREY = "#d62828", "#2a9d8f", "#6c757d"
 
 st.set_page_config(page_title="LeakHunter", page_icon="🛡️", layout="wide")
