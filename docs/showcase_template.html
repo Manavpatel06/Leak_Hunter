@@ -251,15 +251,18 @@ const FIXMAP = {
   A06:{id:'L6', title:'Mask patient names in the joined view', type:'masking', sql:'ALTER TABLE LEAKHUNTER.DATA.PATIENTS MODIFY COLUMN FULL_NAME SET MASKING POLICY LEAKHUNTER.GOVERNANCE.MASK_NAME;', rule:'HIPAA Privacy Rule (minimum necessary)', col:'FULL_NAME', mask:()=>'REDACTED'}};
 const STEPS = [['1 · Setup','A synthetic hospital + HR warehouse with six planted leaks'],['2 · Attack','Fire every attack as LH_ANALYST'],['3 · Fix','Apply Snowflake-native fixes, one by one'],['4 · Re-check','Same attacks, same legit queries'],['5 · Report','Plain-English audit, each leak tagged to its rule']];
 let step = 0, applied = new Set(), fired = true;
+const L2A = Object.fromEntries(Object.entries(FIXMAP).map(([k,f]) => [f.id, k])); // leak id -> fixing attack id
+const fixFor = a => FIXMAP[a.attack_id] ? a.attack_id : L2A[a.targets_leak];            // generated attacks share their leak's fix
 function atkState(a){ // simulated state once fixes are toggled
   if(!a.succeeded) return a.error ? 'err' : 'safe';
-  if(a.attack_id==='A07') return applied.has('A01') && applied.has('A05') ? 'safe' : 'leak';
-  return applied.has(a.attack_id) ? 'safe' : 'leak';
+  const k = fixFor(a);
+  if(!k) return applied.has('A01') && applied.has('A05') ? 'safe' : 'leak';              // the sweep: needs both SSN fixes
+  return applied.has(k) ? 'safe' : 'leak';
 }
 function leakCount(){ return D.attacks.filter(a => atkState(a)==='leak').length; }
 function renderSteps(){ $('#steps').innerHTML = STEPS.map((s,i) => `<div class="step ${i===step?'on':''} ${i<step?'done':''}" data-i="${i}"><b>${s[0]}</b>${s[1]}</div>`).join(''); }
 function attackCards(){ return D.attacks.map(a => { const st = atkState(a); const label = {leak:'LEAK',safe:'BLOCKED',err:'COULD NOT RUN'}[st]; const cls = {leak:'red',safe:'green',err:'amber'}[st];
-  const ev = st==='leak' ? (a.evidence||'') : st==='err' ? (a.error||'').split('\n')[0].slice(0,110) : (a.error ? a.error.split('\n')[0].slice(0,110) : (applied.has(a.attack_id) && FIXMAP[a.attack_id] ? 'now returns: '+FIXMAP[a.attack_id].mask((a.evidence||'').match(/\d{3}-\d{2}-\d{4}|\d{5}/)?.[0]||'x') : 'nothing readable'));
+  const ev = st==='leak' ? (a.evidence||'') : st==='err' ? (a.error||'').split('\n')[0].slice(0,110) : (a.error ? a.error.split('\n')[0].slice(0,110) : (applied.has(fixFor(a)) && FIXMAP[fixFor(a)] ? 'now returns: '+FIXMAP[fixFor(a)].mask((a.evidence||'').match(/\d{3}-\d{2}-\d{4}|\d{5}/)?.[0]||'x') : 'nothing readable'));
   return `<div class="atk ${st}"><div class="id">${esc(a.attack_id)}</div><div class="meta"><div><b>${esc(a.goal)}</b> <span class="chip grey">${esc(a.technique)}</span></div><div class="ev">${esc(ev)}</div></div><span class="chip ${cls}">${label}</span></div>`; }).join(''); }
 function renderLoop(){
   renderSteps();

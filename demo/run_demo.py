@@ -6,6 +6,7 @@
                                         view, the rewrite PASSes   [--merge applies the PASS, --cleanup removes it]
   python demo/run_demo.py round         one referee round (attacks + legit queries) -> scoreboard row
   python demo/run_demo.py scoreboard    open the Streamlit scoreboard
+  python demo/run_demo.py showcase      rebuild the interactive dashboard from live data and open it
   python demo/run_demo.py all           doctor, round, agent (no merge)
 
 Everything it prints is real output from the real tools; nothing is canned except `--sample` (no Ollama).
@@ -147,7 +148,7 @@ def agent(args) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["doctor", "agent", "round", "scoreboard", "all"])
+    ap.add_argument("command", choices=["doctor", "agent", "round", "scoreboard", "showcase", "all"])
     ap.add_argument("--merge", action="store_true", help="agent: apply the PASSed change to production")
     ap.add_argument("--cleanup", action="store_true", help="agent: with --merge, drop the demo view afterwards")
     ap.add_argument("--sample", action="store_true", help="agent: canned package list instead of live Gemma")
@@ -161,6 +162,11 @@ def main() -> int:
         return run(["-m", "referee.run_round"], "referee round")
     if args.command == "scoreboard":
         return run(["-m", "streamlit", "run", "scoreboard/app.py"], "scoreboard (Ctrl+C to stop)")
+    if args.command == "showcase":
+        import webbrowser
+        code = run(["demo/build_showcase.py"], "build dashboard")
+        webbrowser.open((ROOT / "docs" / "showcase.html").as_uri())
+        return code
     if args.command == "agent":
         return agent(args)
     if doctor():  # all
