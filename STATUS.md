@@ -6,7 +6,7 @@
 - [x] `setup/generate_data.py`, `plant_leaks.py`, `reset.py`, `verify.py` — live: verify planted + closed both ALL GOOD; leaks currently planted (--all) for the referee
 - [x] `defender/apply_fixes.py` fallback works live; pii-guardian validated (skills-ref 0 errors)
 - [ ] Defender: CoCo run + screenshots in `docs/coco/`
-- [ ] `report/generate.py`
+- [x] `report/generate.py` (tested on sample data; run after the re-check round: `python -m report.generate` → `report/audit_report.md`)
 
 ## Manas
 - [ ] Ollama + Gemma producing valid SQL
